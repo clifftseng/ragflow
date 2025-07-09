@@ -23,15 +23,20 @@ import DOMPurify from 'dompurify';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { history } from 'umi';
+import { history, useLocation  } from 'umi';
 
 export const useFetchUserInfo = (): ResponseGetType<IUserInfo> => {
   const { i18n } = useTranslation();
+  const location = useLocation();
+  const isPublicPage =
+    location.pathname.startsWith('/km') ||
+    location.pathname.startsWith('/chat/share');
 
   const { data, isFetching: loading } = useQuery({
     queryKey: ['userInfo'],
     initialData: {},
     gcTime: 0,
+    enabled: !isPublicPage,
     queryFn: async () => {
       const { data } = await userService.user_info();
       if (data.code === 0) {

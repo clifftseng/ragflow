@@ -22,6 +22,15 @@ export const useNavigatePage = () => {
     [navigate],
   );
 
+  const navigateToPublicChunk = (path: SegmentedValue) => {
+    navigate(path as string);
+  };
+
+
+  const navigateToPublicChunkPage = (kb_id: string, doc_id: string) => () => {
+    navigate(`/km/${kb_id}/chunk/${doc_id}/parsed-result`);
+  };
+
   const navigateToHome = useCallback(() => {
     navigate(Routes.Home);
   }, [navigate]);
@@ -101,6 +110,29 @@ export const useNavigatePage = () => {
     [navigate],
   );
 
+  /**
+   * 【新增並補全】導航至公開知識庫詳情頁 (/km/:id/dataset)
+   * 用於 Chunk 頁面的返回按鈕。
+   */
+  const navigateToKmDataset = useCallback(
+    (kbId: string) => () => {
+      navigate(`/km/${kbId}/dataset`);
+    },
+    [navigate],
+  );
+
+
+
+  /**
+   * 【保留且正確】產生一個用於 onClick 的、導航到公開 Chunk 頁面的函式
+   * 用於 Dataset 列表頁點擊文件跳轉。
+   */
+  const navigateToKmChunkParsedResult = (docId: string, kbId: string) => {
+    return () => {
+      navigate(`/km/${kbId}/chunk/${docId}/parsed-result`);
+    };
+  };
+
   return {
     navigateToDatasetList,
     navigateToDataset,
@@ -117,5 +149,9 @@ export const useNavigatePage = () => {
     navigateToSearchList,
     navigateToSearch,
     navigateToFiles,
+    navigateToPublicChunk,
+    navigateToPublicChunkPage,
+    navigateToKmChunkParsedResult,
+    navigateToKmDataset, //【已補全並匯出】
   };
 };

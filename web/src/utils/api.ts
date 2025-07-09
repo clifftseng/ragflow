@@ -79,6 +79,22 @@ export default {
   parse: `${api_host}/document/parse`,
   setMeta: `${api_host}/document/set_meta`,
 
+  km_document_create: `${api_host}/km/document/create`, 
+  km_document_upload: (kb_id: string) => `${api_host}/km/document/upload/${kb_id}`,
+  km_get_document_file: (doc_id: string) => `${api_host}/km/document/get/${doc_id}`,
+  km_document_rm: `${api_host}/km/document/rm`,
+  km_document_run: `${api_host}/km/document/run`,
+  km_document_rename: `${api_host}/km/document/rename`,
+  km_document_change_status: `${api_host}/km/document/change_status`,
+  km_document_change_parser: `${api_host}/km/document/change_parser`,
+  km_document_set_meta: `${api_host}/km/document/set_meta`,
+  km_document_thumbnails: `${api_host}/km/document/thumbnails`,
+  km_chunk_list: `${api_host}/km/chunk/list`,
+  km_chunk_set: `${api_host}/km/chunk/set`,
+  km_chunk_rm: `${api_host}/km/chunk/rm`,
+  km_chunk_switch: `${api_host}/km/chunk/switch`,
+  km_chunk_create: `${api_host}/km/chunk/create`,
+
   // chat
   setDialog: `${api_host}/dialog/set`,
   getDialog: `${api_host}/dialog/get`,

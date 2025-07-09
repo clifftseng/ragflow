@@ -19,6 +19,7 @@ const {
   document_rm,
   document_delete,
   document_create,
+  km_document_create, // 【【【導入新路由】】】
   document_change_parser,
   document_thumbnails,
   chunk_list,
@@ -37,6 +38,20 @@ const {
   upload_and_parse,
   listTagByKnowledgeIds,
   setMeta,
+  km_document_rm,
+  km_document_run,
+  km_document_rename,
+  km_document_change_status,
+  km_document_change_parser,
+  km_document_set_meta,
+  km_document_thumbnails,
+  km_chunk_list,
+  km_chunk_set,
+  km_chunk_rm,
+  km_chunk_switch,
+  km_chunk_create,
+
+
 } = api;
 
 const methods = {
@@ -82,6 +97,21 @@ const methods = {
     url: document_create,
     method: 'post',
   },
+
+  km_document_create: { url: km_document_create, method: 'post' },
+  km_document_rm: { url: km_document_rm, method: 'post' },
+  km_document_run: { url: km_document_run, method: 'post' },
+  km_document_rename: { url: km_document_rename, method: 'post' },
+  km_document_change_status: { url: km_document_change_status, method: 'post' },
+  km_document_change_parser: { url: km_document_change_parser, method: 'post' },
+  km_document_set_meta: { url: km_document_set_meta, method: 'post' },
+  km_document_thumbnails: { url: km_document_thumbnails, method: 'get' },
+  km_chunk_list: { url: km_chunk_list, method: 'post' },
+  km_chunk_set: { url: km_chunk_set, method: 'post' },
+  km_chunk_rm: { url: km_chunk_rm, method: 'post' },
+  km_chunk_switch: { url: km_chunk_switch, method: 'post' },
+  km_chunk_create: { url: km_chunk_create, method: 'post' },   
+
   document_run: {
     url: document_run,
     method: 'post',
@@ -158,6 +188,14 @@ const methods = {
 };
 
 const kbService = registerServer<keyof typeof methods>(methods, request);
+
+export const uploadPublicDocument = (kb_id: string, data: FormData) => {
+  // 直接從 api 物件呼叫函式來取得完整、正確的 URL
+  const url = api.km_document_upload(kb_id);
+  return request.post<any>(url, {
+    data,
+  });
+};
 
 export const listTag = (knowledgeId: string) =>
   request.get(api.listTag(knowledgeId));

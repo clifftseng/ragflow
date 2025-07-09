@@ -1,0 +1,145 @@
+// 檔案路徑: web/src/pages/km/km-hooks.tsx
+// 【【【請用此程式碼完整覆蓋你的檔案】】】
+
+import { IKnowledgeBase } from '@/interfaces/database/knowledge';
+import request from '@/utils/request';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useParams, useSearchParams } from 'umi';
+import { useTranslation } from 'react-i18next';
+import { message } from 'antd';
+import kbService from '@/services/knowledge-service';
+
+// API 呼叫函式 (保持不變)
+const fetchKmDetail = (kb_id: string) => {
+  return request.get(`/v1/km/detail`, { params: { kb_id } });
+};
+const fetchKmDocumentList = (params: any) => {
+  return request.get<any>(`/v1/km/documents`, { params });
+};
+
+// 知識庫詳情的 Hook (保持不變)
+export const useFetchKmKnowledgeBaseConfiguration = () => {
+  const { id: kb_id } = useParams();
+  const { data, isFetching: loading } = useQuery<IKnowledgeBase>({
+    queryKey: ['kmKnowledgeBase', kb_id],
+    initialData: {} as IKnowledgeBase,
+    gcTime: 0,
+    enabled: !!kb_id,
+    queryFn: async () => {
+      if (!kb_id) return {} as IKnowledgeBase;
+      const { data: res } = await fetchKmDetail(kb_id);
+      if (res.code === 0) return res.data;
+      return {} as IKnowledgeBase;
+    },
+  });
+  return { data, loading };
+};
+
+// 文件列表的 Hook (保持不變, 包含 refetch)
+export const useFetchKmDocumentList = () => {
+  const { id: kb_id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchString, setSearchString] = useState('');
+  const queryClient = useQueryClient();
+
+  const page = searchParams.get('page') ?? '1';
+  const size = searchParams.get('size') ?? '10';
+
+  const { data, isFetching: loading } = useQuery({
+    queryKey: ['kmDocumentList', kb_id, page, size, searchString],
+    initialData: { docs: [], total: 0 },
+    gcTime: 0,
+    enabled: !!kb_id,
+    queryFn: async () => {
+      if (!kb_id) return { docs: [], total: 0 };
+      const apiParams = { kb_id, page, size, keywords: searchString, '_': new Date().getTime() };
+      const { data: res } = await fetchKmDocumentList(apiParams);
+      if (res.code === 0) return res.data;
+      return { docs: [], total: 0 };
+    },
+  });
+
+  const refetch = () => {
+    queryClient.invalidateQueries({ queryKey: ['kmDocumentList', kb_id, page, size, searchString] });
+  };
+
+  const pagination = {
+    current: Number(page),
+    pageSize: Number(size),
+    total: data?.total ?? 0,
+  };
+
+  const handleInputChange = (eventOrValue: any) => {
+    const value = eventOrValue?.target ? eventOrValue.target.value : eventOrValue;
+    setSearchString(value);
+  };
+
+  const setPagination = ({ current, pageSize }: { current: number; pageSize: number; }) => {
+    setSearchParams((prev) => {
+      prev.set('page', current.toString());
+      prev.set('size', pageSize.toString());
+      return prev;
+    });
+  };
+
+  return { searchString, documents: data?.docs ?? [], pagination, handleInputChange, setPagination, loading, refetch };
+};
+
+// ==================================================================
+// 【【【新增所有缺失的 Hook，請確保它們存在於檔案中】】】
+// ==================================================================
+
+export const useRenameKmDocument = () => {
+  const { t } = useTranslation();
+  const { mutate, isPending: loading } = useMutation({
+    mutationFn: (params: { doc_id: string; name: string }) => kbService.km_document_rename(params),
+    onError: (error: Error) => message.error(error.message),
+  });
+  return { renameDocument: mutate, loading };
+};
+
+export const useRemoveKmDocument = () => {
+  const { t } = useTranslation();
+  const { mutate, isPending: loading } = useMutation({
+    mutationFn: (doc_id: string) => kbService.km_document_rm({ doc_ids: [doc_id] }),
+    onError: (error: Error) => message.error(error.message),
+  });
+  return { removeDocument: mutate, loading };
+};
+
+export const useRunDocument = () => {
+  const { t } = useTranslation();
+  const { mutate, isPending: loading } = useMutation({
+    mutationFn: (params: { doc_ids: string[]; run_type: 'rerun' | 'cancel' }) => kbService.km_document_run(params),
+    onSuccess: () => message.success(t('message.operated')),
+    onError: (error: Error) => message.error(error.message),
+  });
+  return { runDocument: mutate, loading };
+};
+
+export const useChangeDocumentStatus = () => {
+  const { t } = useTranslation();
+  const { mutate, isPending: loading } = useMutation({
+    mutationFn: (params: { doc_id: string; status: string }) => kbService.km_document_change_status(params),
+    onSuccess: () => message.success(t('message.modified')),
+    onError: (error: Error) => message.error(error.message),
+  });
+  return { changeDocumentStatus: mutate, loading };
+};
+
+// 這個 Hook 用於新建空文件夾，也需要存在
+export const useCreateEmptyDocument = () => {
+  const { id: kb_id } = useParams();
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { mutate, isPending: loading } = useMutation({
+    mutationFn: (name: string) => kbService.km_document_create({ name, kb_id }),
+    onSuccess: () => {
+      message.success(t('message.created'));
+      queryClient.invalidateQueries({ queryKey: ['kmDocumentList', kb_id] });
+    },
+    onError: (error: Error) => message.error(error.message),
+  });
+  return { createEmptyDocument: mutate, loading };
+};

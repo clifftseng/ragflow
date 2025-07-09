@@ -436,3 +436,71 @@ class KnowledgebaseService(CommonService):
             else:
                 raise e
 
+    # 在 class KnowledgebaseService(CommonService) 的內部追加以下方法
+
+    # @classmethod
+    # @DB.connection_context()
+    # def get_public_detail(cls, kb_id):
+    #     """
+    #     Get public knowledgebase detail by kb_id without user authentication.
+    #     """
+    #     # 這個實作參考了您檔案中現有的 get_detail 方法，但移除了所有權限驗證邏輯
+    #     fields = [
+    #         cls.model.id,
+    #         cls.model.embd_id,
+    #         cls.model.avatar,
+    #         cls.model.name,
+    #         cls.model.language,
+    #         cls.model.description,
+    #         cls.model.permission,
+    #         cls.model.doc_num,
+    #         cls.model.token_num,
+    #         cls.model.chunk_num,
+    #         cls.model.parser_id,
+    #         cls.model.parser_config,
+    #         cls.model.pagerank,
+    #         cls.model.create_time,
+    #         cls.model.update_time
+    #     ]
+    #     kbs = cls.model.select(*fields).where(
+    #         (cls.model.id == kb_id),
+    #         (cls.model.status == StatusEnum.VALID.value)
+    #     )
+    #     if not kbs:
+    #         return None
+        
+    #     d = kbs[0].to_dict()
+    #     return d
+
+    @classmethod
+    @DB.connection_context()
+    def get_public_detail(cls, kb_id):
+        """
+        Get public knowledgebase detail by kb_id without user authentication.
+        This version joins with the Tenant table to include 'parser_ids'.
+        """
+        try:
+            # 關聯查詢 Knowledgebase 和 Tenant，並同時選取兩邊的欄位
+            query = (
+                cls.model.select(cls.model, Tenant.parser_ids)
+                .join(Tenant, on=(cls.model.tenant_id == Tenant.id))
+                .where(
+                    (cls.model.id == kb_id),
+                    (cls.model.status == StatusEnum.VALID.value)
+                )
+            )
+
+            # 使用 .dicts() 獲取結果列表
+            results = list(query.dicts())
+            
+            # 如果沒有結果，返回 None
+            if not results:
+                return None
+            
+            # results[0] 是一個字典，已經包含了 Knowledgebase 的所有欄位和 Tenant 的 parser_ids 欄位
+            return results[0]
+        except Exception as e:
+            # 加上日誌紀錄，方便未來偵錯
+            import logging
+            logging.error(f"Error in get_public_detail for kb_id {kb_id}: {e}")
+            return None

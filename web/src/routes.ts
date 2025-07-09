@@ -24,6 +24,7 @@ export enum Routes {
 }
 
 const routes = [
+  
   {
     path: '/login',
     component: '@/pages/login',
@@ -38,6 +39,32 @@ const routes = [
     path: '/chat/share',
     component: '@/pages/chat/share',
     layout: false,
+  },
+  {
+    path: '/km/:id',
+    layout: false, // 關鍵：確保此路由及其所有子路由，都脫離主應用的全域佈局
+    // 注意：這裡不需要 component，因為它是一個佈局路由，由它的子路由來定義具體內容
+    routes: [
+      // 規則 1: 當用戶訪問 /km/:id 時，自動跳轉到 dataset 子頁面
+      { path: '/km/:id', redirect: `/km/:id/dataset` }, 
+      // 規則 2: 定義 dataset 子頁面
+      {
+        path: 'dataset', // 相對路徑，會自動拼接為 /km/:id/dataset
+        component: '@/pages/km/dataset',
+      },
+      // 規則 3: 定義 chunk 頁面的父級佈局
+      {
+        path: 'chunk/:doc_id', // 相對路徑，會自動拼接為 /km/:id/chunk/:doc_id
+        component: '@/pages/km/chunk', // 指向我們的 chunk 頁佈局元件
+        routes: [
+          // 規則 4: 定義 chunk 頁面的具體內容
+          {
+            path: 'parsed-result', // 相對路徑，會自動拼接為 /km/:id/chunk/:doc_id/parsed-result
+            component: '@/pages/km/chunk/parsed-result',
+          },
+        ],
+      },
+    ],
   },
   {
     path: '/',
@@ -155,6 +182,7 @@ const routes = [
     path: Routes.Home,
     layout: false,
     component: '@/layouts/next',
+    wrappers: [],
     routes: [
       {
         path: Routes.Home,

@@ -8,6 +8,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    
     image: ${RAGFLOW_IMAGE}
     # Example configuration to set up an MCP server:
     # command:
@@ -19,6 +20,9 @@ services:
     #   - --mcp-mode=self-host
     #   - --mcp-host-api-key=ragflow-xxxxxxx
     container_name: ragflow-server
+    build:
+      context: ../
+      dockerfile: Dockerfile
     ports:
       - ${SVR_HTTP_PORT}:9380
       - 80:80

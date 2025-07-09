@@ -11,7 +11,7 @@ import { useDebounce } from 'ahooks';
 import { message } from 'antd';
 import { get } from 'lodash';
 import { useCallback } from 'react';
-import { useParams } from 'umi';
+import { useLocation, useParams } from 'umi';
 import {
   useGetPaginationWithRouter,
   useHandleSearchChange,

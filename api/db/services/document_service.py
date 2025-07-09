@@ -279,6 +279,39 @@ class DocumentService(CommonService):
             Knowledgebase.id == doc.kb_id).execute()
         return num
 
+    
+
+    @classmethod
+    @DB.connection_context()
+    def reset_chunk_num(cls, doc_id):
+        """
+        Resets the chunk and token counts for a document and updates the parent knowledge base accordingly.
+        This is intended for "reparse" operations, where the document itself is not being deleted.
+        """
+        e, doc = cls.get_by_id(doc_id)
+        if not e:
+            raise LookupError(f"Document with id {doc_id} not found for chunk reset.")
+
+        # Decrement the old counts from the knowledge base
+        kb_update_query = Knowledgebase.update(
+            token_num=Knowledgebase.token_num - doc.token_num,
+            chunk_num=Knowledgebase.chunk_num - doc.chunk_num
+        ).where(Knowledgebase.id == doc.kb_id)
+        kb_update_query.execute()
+
+        # Reset the counts on the document itself
+        doc_update_query = cls.model.update(
+            token_num=0,
+            chunk_num=0,
+            run=TaskStatus.RUNNING.value,
+            progress=0.0,
+            progress_msg=""
+        ).where(cls.model.id == doc_id)
+        doc_update_query.execute()
+
+        return True
+
+
     @classmethod
     @DB.connection_context()
     def get_tenant_id(cls, doc_id):
@@ -538,6 +571,33 @@ class DocumentService(CommonService):
             pass
         return False
 
+
+    @classmethod
+    @DB.connection_context()
+    def get_public_list(cls, kb_id, page=1, page_size=100, keywords=None, run_status=None, types=None):
+        """
+        Get public list of documents using Peewee syntax.
+        Now with filtering capabilities.
+        """
+        docs_query = cls.model.select().where( (cls.model.kb_id == kb_id) )
+
+        if keywords:
+            docs_query = docs_query.where(
+                fn.LOWER(cls.model.name).contains(keywords.lower())
+            )
+
+        if run_status:
+            docs_query = docs_query.where(cls.model.run.in_(run_status))
+
+        if types:
+            docs_query = docs_query.where(cls.model.type.in_(types))
+
+        count = docs_query.count()
+
+        docs_query = docs_query.order_by(cls.model.update_time.desc()).paginate(page, page_size)
+
+        return list(docs_query.dicts()), count
+            
 
 def queue_raptor_o_graphrag_tasks(doc, ty, priority):
     chunking_config = DocumentService.get_chunking_config(doc["id"])
