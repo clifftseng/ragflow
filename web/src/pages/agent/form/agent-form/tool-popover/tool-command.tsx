@@ -9,13 +9,14 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { Operator } from '@/pages/flow/constant';
+import { Operator } from '@/pages/agent/constant';
 import { useCallback, useEffect, useState } from 'react';
 
 const Menus = [
   {
     label: 'Search',
     list: [
+      Operator.TavilySearch,
       Operator.Google,
       Operator.Bing,
       Operator.DuckDuckGo,
@@ -41,6 +42,7 @@ const Menus = [
       Operator.Invoke,
       Operator.Crawler,
       Operator.Code,
+      Operator.Retrieval,
     ],
   },
 ];
