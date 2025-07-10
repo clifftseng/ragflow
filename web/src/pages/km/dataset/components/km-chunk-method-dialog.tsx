@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { IChangeParser, IParserConfig } from '@/interfaces/database/document';
 import { TParserSchema, parserSchema } from './km-form-schema';
-import { useMemo } from 'react';
-import { KmChunkMethodForm } from './km-chunk-method-form'; 
 
+import { KmChunkMethodForm } from './km-chunk-method-form'; 
+import { useMemo, useEffect } from 'react';
 interface IProps {
   visible: boolean;
   hideModal: () => void;
@@ -34,8 +34,18 @@ export function KmChunkMethodDialog({ visible, hideModal, document, onOk, loadin
     defaultValues,
   });
 
+  useEffect(() => {
+    if (form.formState.isSubmitting) return; // 正在提交時，暫不顯示舊錯誤
+    const errors = form.formState.errors;
+    if (Object.keys(errors).length > 0) {
+      console.error('ZOD VALIDATION FAILED:', JSON.stringify(errors, null, 2));
+    }
+  }, [form.formState.errors, form.formState.isSubmitting]);
+
+
+
   const onSubmit = (values: TParserSchema) => {
-    const { parserId, parserConfig } = values;
+  const { parserId, parserConfig } = values;  
     onOk({
       parser_id: parserId,
       parser_config: parserConfig as IParserConfig,

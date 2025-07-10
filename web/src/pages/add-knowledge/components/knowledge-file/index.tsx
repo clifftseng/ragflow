@@ -1,3 +1,4 @@
+import { useSearchParams } from 'umi';
 import ChunkMethodModal from '@/components/chunk-method-modal';
 import SvgIcon from '@/components/svg-icon';
 import {
@@ -38,6 +39,10 @@ import { SetMetaModal } from './set-meta-modal';
 const { Text } = Typography;
 
 const KnowledgeFile = () => {
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('id');
+  const publicUrl = id ? `${window.location.origin}/km/${id}/dataset` : '';
+
   const { searchString, documents, pagination, handleInputChange } =
     useFetchNextDocumentList();
   const parserList = useSelectParserList();
@@ -201,6 +206,14 @@ const KnowledgeFile = () => {
     <div className={styles.datasetWrapper}>
       <h3>{t('dataset')}</h3>
       <p>{t('datasetDescription')}</p>
+      {publicUrl && (
+        <div className="text-sm text-gray-500 mt-2 mb-4">
+          <span>Public website: </span>
+          <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+            {publicUrl}
+          </a>
+        </div>
+      )}
       <Divider></Divider>
       <DocumentToolbar
         selectedRowKeys={rowSelection.selectedRowKeys as string[]}

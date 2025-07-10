@@ -118,7 +118,7 @@ export const useKmRemoveChunk = () => {
   const { t } = useTranslation();
   const queryKey = ['fetchKmChunkList', kb_id, doc_id];
 
-  const { mutate, isPending } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: (chunk_id: string) => kbService.km_chunk_rm({ doc_id: doc_id, chunk_ids: [chunk_id] }),
     onMutate: async (chunk_id_to_delete) => {
       await queryClient.cancelQueries({ queryKey });
@@ -136,13 +136,13 @@ export const useKmRemoveChunk = () => {
       message.error((err as Error).message);
     },
     onSuccess: () => {
-        message.success(t('message.success.delete'));
+        message.success(t('message.deleted'));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
-  return { removeChunk: mutate, removing: isPending };
+  return { removeChunkAsync: mutateAsync, removing: isPending };
 };
 
 // 【【【升級點 3：useKmUpdateChunk 採用樂觀更新】】】

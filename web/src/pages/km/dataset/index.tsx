@@ -96,9 +96,11 @@ export default function Dataset() {
         {t('fileManager.uploadFile')}
        </DropdownMenuItem>
        <DropdownMenuSeparator />
+       { /*
        <DropdownMenuItem onClick={showCreateModal}>
         {t('fileManager.newFolder')}
        </DropdownMenuItem>
+       */}
       </DropdownMenuContent>
      </DropdownMenu>
     </div>

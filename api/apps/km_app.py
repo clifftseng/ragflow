@@ -7,6 +7,7 @@ from api.db.services.document_service import DocumentService
 from api.utils.api_utils import get_json_result, server_error_response, get_data_error_result, validate_request
 from api.db.services.file_service import FileService
 from api.db import FileType, TaskStatus
+from api.db.services.file2document_service import File2DocumentService
 from rag.utils.storage_factory import STORAGE_IMPL
 from api.db.db_models import Task
 from api.utils import get_uuid
@@ -15,6 +16,8 @@ from api import settings
 from api.db.services.task_service import queue_tasks
 from api.db.services.user_service import TenantService
 from rag.nlp import search
+from api.db.db_models import Knowledgebase, Task
+from api.db.services.task_service import TaskService, queue_tasks
 import os
 import io # 【【【新增】】】: 導入 io 模組
 
@@ -145,31 +148,42 @@ def run_public_document():
     run_type = req.get("run_type")
     if not isinstance(doc_ids, list):
         return get_data_error_result(message="doc_ids must be a list.")
+
     try:
         if run_type == "rerun":
             for doc_id in doc_ids:
                 e, doc = DocumentService.get_by_id(doc_id)
                 if not e: continue
 
-                tenant_id = DocumentService.get_tenant_id(doc_id)
+                tenant_id = DocumentService.get_tenant_id(doc.id)
                 if not tenant_id: continue
 
-                # 【【【最終修正】】】
-                # 1. 刪除向量數據庫中的舊 chunks
-                settings.docStoreConn.delete({"doc_id": doc.id}, search.index_name(tenant_id), doc.kb_id)
-                
-                # 2. 刪除舊的 Task 紀錄
-                Task.delete().where(Task.doc_id == doc_id).execute()
-                
-                # 3. 使用我們新建的、安全的服務來重置計數和狀態
-                DocumentService.reset_chunk_num(doc_id)
+                # 1. 刪除向量數據庫中的舊 chunks (如果存在)
+                if settings.docStoreConn.indexExist(search.index_name(tenant_id), doc.kb_id):
+                    settings.docStoreConn.delete({"doc_id": doc.id}, search.index_name(tenant_id), doc.kb_id)
 
-                # 4. 重新將任務加入隊列
-                # 注意：我們需要重新獲取一次 doc 對象，以確保拿到最新的狀態 (run=RUNNING)
+                # 2. 刪除舊的 Task 紀錄
+                TaskService.filter_delete([Task.doc_id == doc_id])
+
+                # 3. 如果文件之前已完成，則重置知識庫中的計數
+                if doc.run == TaskStatus.DONE.value:
+                    DocumentService.clear_chunk_num_when_rerun(doc.id)
+
+                # 4. 更新文件狀態為「正在運行」，並重置進度
+                info = {
+                    "run": TaskStatus.RUNNING.value,
+                    "progress": 0,
+                    "progress_msg": ""
+                }
+                DocumentService.update_by_id(doc_id, info)
+
+                # 5. 重新將解析任務加入隊列
                 e, updated_doc = DocumentService.get_by_id(doc_id)
                 if not e: continue
-                bucket = os.environ.get("MINIO_BUCKET", "ragflow")
-                queue_tasks(updated_doc.to_dict(), bucket, updated_doc.location, 0)
+                # bucket = os.environ.get("MINIO_BUCKET", "ragflow")
+                # queue_tasks(updated_doc.to_dict(), bucket, updated_doc.location, 0)
+                bucket, name = File2DocumentService.get_storage_address(doc_id=updated_doc.id)
+                queue_tasks(updated_doc.to_dict(), bucket, name, 0)
 
         elif run_type == "cancel":
             for doc_id in doc_ids:
@@ -180,9 +194,6 @@ def run_public_document():
         return get_json_result(data=True)
     except Exception as e:
         return server_error_response(e)
-
-# ... (檔案 api/apps/km_app.py 的現有內容保持不變) ...
-
 @manager.route("/document/rename", methods=["POST"])
 @validate_request("doc_id", "name")
 def rename_public_document():
@@ -392,30 +403,40 @@ def set_chunk_public():
     except Exception as e:
         return server_error_response(e)
 
-
 @manager.route('/chunk/rm', methods=['POST'])
 @validate_request("chunk_ids", "doc_id")
 def rm_chunk_public():
     req = request.json
+    doc_id = req["doc_id"]
+    chunk_ids = req["chunk_ids"]
+
     try:
-        # 依據：參考 chunk_app.py:rm()
-        # 改造：tenant_id 來自 doc_id
-        tenant_id = DocumentService.get_tenant_id(req["doc_id"])
+        tenant_id = DocumentService.get_tenant_id(doc_id)
         if not tenant_id:
             return get_data_error_result(message="Tenant not found!")
 
-        e, doc = DocumentService.get_by_id(req["doc_id"])
+        e, doc = DocumentService.get_by_id(doc_id)
         if not e:
             return get_data_error_result(message="Document not found!")
 
-        if not settings.docStoreConn.delete({"id": req["chunk_ids"]}, search.index_name(tenant_id), doc.kb_id):
+        if not settings.docStoreConn.delete({"id": chunk_ids}, search.index_name(tenant_id), doc.kb_id):
             return get_data_error_result(message="Index updating failure")
 
-        # Note: 這裡我們簡化了 chunk 數量的更新邏輯，因為公開頁面主要用於展示和輕量級編輯
+        # ✨ 【【【最終、關鍵的後端修正】】】 ✨
+        # 在刪除 chunk 後，從資料庫中更新父文件的 chunk 數量
+        chunk_count_to_decrement = len(chunk_ids)
+        if chunk_count_to_decrement > 0:
+            DocumentService.decrement_chunk_num(
+                doc_id=doc_id, 
+                kb_id=doc.kb_id, 
+                token_num=0, # 為簡化起見，暫不精確計算 token 數
+                chunk_num=chunk_count_to_decrement, 
+                duration=0
+            )
+
         return get_json_result(data=True)
     except Exception as e:
         return server_error_response(e)
-
 
 @manager.route("/document/thumbnails", methods=["GET"])
 def public_document_thumbnails():
@@ -568,3 +589,5 @@ def switch_chunk_public():
         return get_json_result(data=True)
     except Exception as e:
         return server_error_response(e)
+
+
