@@ -1,10 +1,10 @@
 // 檔案路徑: web/src/pages/km/dataset/set-meta-dialog.tsx
-// 【【【最終修正版】】】
+// 【【【最終修正版 - HTML 內容正確渲染】】】
 
 import {
   Dialog,
   DialogContent,
-  DialogDescription, // 【【【修改 1/3】】】: 導入 DialogDescription
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -24,15 +24,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { IDocument } from '@/interfaces/database/document';
-import Editor, { loader } from '@monaco-editor/react';
+import { Input } from 'antd';
 import { useEffect } from 'react';
-
-// 【【【修改 2/3】】】: 更改 Monaco Editor 的資源路徑，從本地相對路徑改為使用 CDN
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs',
-  },
-});
+import DOMPurify from 'dompurify'; // 【【【新增】】】: 導入 DOMPurify 用於安全地解析 HTML
 
 export function SetMetaDialog({
   hideModal,
@@ -81,10 +75,14 @@ export function SetMetaDialog({
     <Dialog open={visible} onOpenChange={hideModal}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t('knowledgeDetails.setMetadata')}</DialogTitle>
-          {/* 【【【修改 3/3】】】: 增加 DialogDescription 以修正無障礙警告 */}
+          <DialogTitle>{t('knowledgeDetails.setMetaData')}</DialogTitle>
+          {/* 【【【核心修改】】】: 使用 dangerouslySetInnerHTML 渲染 HTML 字串 */}
           <DialogDescription>
-            {t('knowledgeDetails.documentMetaTips')}
+            <span
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(t('knowledgeDetails.documentMetaTips')),
+              }}
+            />
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -96,10 +94,8 @@ export function SetMetaDialog({
                 <FormItem>
                   <FormLabel>{t('knowledgeDetails.metaData')}</FormLabel>
                   <FormControl>
-                    <Editor
-                      height={200}
-                      defaultLanguage="json"
-                      theme="vs-dark"
+                    <Input.TextArea
+                      rows={10}
                       value={field.value}
                       onChange={field.onChange}
                     />

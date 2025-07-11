@@ -13,7 +13,7 @@ import { message, Modal } from 'antd';
 import { useKmDatasetTableColumns } from './use-km-dataset-table-columns';
 import { useDownloadKmDocument } from './use-download-km-document'; // 【【【修改 1/4】】】: 導入新建的下載 Hook
 import { KmChunkMethodDialog } from './components/km-chunk-method-dialog';
-import { SetMetaDialog } from '@/pages/dataset/dataset/set-meta-dialog';
+import { SetMetaDialog } from './set-meta-dialog';
 import { useFetchKmKnowledgeBaseConfiguration } from '../km-hooks';
 import { RenameModal } from './rename-modal';
 import { KmPagination } from './km-pagination';

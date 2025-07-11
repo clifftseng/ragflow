@@ -46,9 +46,7 @@ const KmDatasetActionCell = ({ record, onRerun, onRemove, onShowRenameModal, onS
             </Tooltip>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => onShowChunkMethod(record)}>{t('knowledgeDetails.chunkMethod')}</DropdownMenuItem>
-              {/*
               <DropdownMenuItem onClick={() => onShowMeta(record)}>{t('knowledgeDetails.setMetaData')}</DropdownMenuItem>
-              */}
             </DropdownMenuContent>
           </DropdownMenu>
           
