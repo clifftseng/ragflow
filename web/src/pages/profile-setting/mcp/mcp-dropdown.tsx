@@ -6,27 +6,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useDeleteMcpServer } from '@/hooks/use-mcp-request';
 import { PenLine, Trash2 } from 'lucide-react';
 import { MouseEventHandler, PropsWithChildren, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UseEditMcpReturnType } from './use-edit-mcp';
 
-export function McpDropdown({ children }: PropsWithChildren) {
+export function McpDropdown({
+  children,
+  mcpId,
+  showEditModal,
+}: PropsWithChildren & { mcpId: string } & Pick<
+    UseEditMcpReturnType,
+    'showEditModal'
+  >) {
   const { t } = useTranslation();
+  const { deleteMcpServer } = useDeleteMcpServer();
 
-  const handleShowAgentRenameModal: MouseEventHandler<HTMLDivElement> =
-    useCallback((e) => {
-      e.stopPropagation();
-    }, []);
-
-  const handleDelete: MouseEventHandler<HTMLDivElement> =
-    useCallback(() => {}, []);
+  const handleDelete: MouseEventHandler<HTMLDivElement> = useCallback(() => {
+    deleteMcpServer([mcpId]);
+  }, [deleteMcpServer, mcpId]);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={handleShowAgentRenameModal}>
-          {t('common.rename')} <PenLine />
+        <DropdownMenuItem onClick={showEditModal(mcpId)}>
+          {t('common.edit')} <PenLine />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <ConfirmDeleteDialog onOk={handleDelete}>
