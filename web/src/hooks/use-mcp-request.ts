@@ -1,9 +1,13 @@
 import message from '@/components/ui/message';
-import { IMcpServerListResponse } from '@/interfaces/database/mcp';
+import {
+  IMcpServer,
+  IMcpServerListResponse,
+  IMCPTool,
+} from '@/interfaces/database/mcp';
+import { ITestMcpRequestBody } from '@/interfaces/request/mcp';
 import i18n from '@/locales/config';
 import mcpServerService from '@/services/mcp-server-service';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 
 export const enum McpApiAction {
   ListMcpServer = 'listMcpServer',
@@ -33,20 +37,19 @@ export const useListMcpServer = () => {
   return { data, loading };
 };
 
-export const useGetMcpServer = () => {
-  const [id, setId] = useState('');
-  const { data, isFetching: loading } = useQuery({
+export const useGetMcpServer = (id: string) => {
+  const { data, isFetching: loading } = useQuery<IMcpServer>({
     queryKey: [McpApiAction.GetMcpServer, id],
-    initialData: {},
+    initialData: {} as IMcpServer,
     gcTime: 0,
     enabled: !!id,
     queryFn: async () => {
-      const { data } = await mcpServerService.get();
+      const { data } = await mcpServerService.get({ mcp_id: id });
       return data?.data ?? {};
     },
   });
 
-  return { data, loading, setId, id };
+  return { data, loading, id };
 };
 
 export const useCreateMcpServer = () => {
@@ -105,8 +108,8 @@ export const useDeleteMcpServer = () => {
     mutateAsync,
   } = useMutation({
     mutationKey: [McpApiAction.DeleteMcpServer],
-    mutationFn: async (params: Record<string, any>) => {
-      const { data = {} } = await mcpServerService.delete(params);
+    mutationFn: async (ids: string[]) => {
+      const { data = {} } = await mcpServerService.delete({ mcp_ids: ids });
       if (data.code === 0) {
         message.success(i18n.t(`message.deleted`));
 
@@ -164,12 +167,12 @@ export const useTestMcpServer = () => {
     data,
     isPending: loading,
     mutateAsync,
-  } = useMutation({
+  } = useMutation<IMCPTool[], Error, ITestMcpRequestBody>({
     mutationKey: [McpApiAction.TestMcpServer],
-    mutationFn: async (params: Record<string, any>) => {
-      const { data = {} } = await mcpServerService.test(params);
+    mutationFn: async (params) => {
+      const { data } = await mcpServerService.test(params);
 
-      return data;
+      return data?.data || [];
     },
   });
 
