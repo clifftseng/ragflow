@@ -43,17 +43,12 @@ class Ppt(PptParser):
             for i, slide in enumerate(presentation.slides[from_page: to_page]):
                 try:
                     with BytesIO() as buffered:
-                        thumb = slide.get_thumbnail()
-                        thumb.save(buffered, image.ImageFormat.jpeg)
+                        thumb = slide.get_thumbnail(0.5, 0.5)
+                        thumb.save(buffered, drawing.imaging.ImageFormat.jpeg)
                         buffered.seek(0)
-                        # 【【【最終關鍵修正】】】
-                        # 1. 使用一個臨時變數 img 來接收圖片物件
                         img = Image.open(buffered)
-                        # 2. 強制 PIL 載入所有圖片數據到記憶體中
                         img.load()
-                        # 3. 將載入完畢的圖片物件加入列表
                         imgs.append(img)
-                        
                 except RuntimeError as e:
                     raise RuntimeError(f'ppt parse error at page {i+1}, original error: {str(e)}') from e
         assert len(imgs) == len(
