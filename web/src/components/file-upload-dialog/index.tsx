@@ -11,6 +11,7 @@ import { IModalProps } from '@/interfaces/common';
 import { Dispatch, SetStateAction, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileUploader } from '../file-uploader';
+import { FileMimeType } from '@/constants/common';
 
 type UploaderTabsProps = {
   setFiles: Dispatch<SetStateAction<File[]>>;
@@ -18,6 +19,16 @@ type UploaderTabsProps = {
 
 export function UploaderTabs({ setFiles }: UploaderTabsProps) {
   const { t } = useTranslation();
+
+  const acceptedMimeTypes = Object.values(FileMimeType).reduce(
+    (acc, mimeType) => {
+      // FileMimeType 是一個 enum，它的值就是我們需要的字串
+      acc[mimeType] = [];
+      return acc;
+    },
+    {} as Record<string, string[]>,
+  );
+
 
   return (
     <Tabs defaultValue="account">
@@ -30,7 +41,8 @@ export function UploaderTabs({ setFiles }: UploaderTabsProps) {
           maxFileCount={8}
           maxSize={8 * 1024 * 1024}
           onValueChange={setFiles}
-          accept={{ '*': [] }}
+          // accept={{ '*': [] }}
+          accept={acceptedMimeTypes}
         />
       </TabsContent>
       <TabsContent value="password">{t('common.comingSoon')}</TabsContent>

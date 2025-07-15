@@ -101,7 +101,7 @@ def upload_public_document(kb_id: str):
         e, kb = KnowledgebaseService.get_by_id(kb_id)
         if not e:
             return get_data_error_result(message=f"Knowledge base with id {kb_id} not found.")
-        err, files = FileService.upload_document(kb, file_objs, kb.created_by)
+        err, files = FileService.upload_document(kb, file_objs, kb.tenant_id)
         if err:
             return get_data_error_result(message="\n".join(err))
         if not files:
@@ -110,13 +110,13 @@ def upload_public_document(kb_id: str):
 
 
         # 【【【關鍵修改 2/3：添加自動解析的邏輯】】】
-        bucket = os.environ.get("MINIO_BUCKET", "ragflow")
-        for doc_dict, _ in files:
-            # 文件上傳後，其狀態預設為 PENDING。我們在此手動更新為 RUNNING，
-            # 以確保 UI 能即時反饋「解析中」的狀態。
-            DocumentService.update_by_id(doc_dict["id"], {"run": TaskStatus.RUNNING.value})
-            # 將解析任務加入佇列
-            queue_tasks(doc_dict, bucket, doc_dict['location'], 0)
+        # bucket = os.environ.get("MINIO_BUCKET", "ragflow")
+        # for doc_dict, _ in files:
+        #     # 文件上傳後，其狀態預設為 PENDING。我們在此手動更新為 RUNNING，
+        #     # 以確保 UI 能即時反饋「解析中」的狀態。
+        #     DocumentService.update_by_id(doc_dict["id"], {"run": TaskStatus.RUNNING.value})
+        #     # 將解析任務加入佇列
+        #     queue_tasks(doc_dict, bucket, doc_dict['location'], 0)
 
         files_json = [f[0] for f in files]
         return get_json_result(data=files_json)
