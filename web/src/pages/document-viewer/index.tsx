@@ -2,13 +2,13 @@ import { Images } from '@/constants/common';
 import { api_host } from '@/utils/api';
 import { Flex } from 'antd';
 import { useParams, useSearchParams } from 'umi';
-import Md from './md';
-import Text from './text';
 import Docx from './docx';
 import Excel from './excel';
 import Image from './image';
+import Md from './md';
 import Pdf from './pdf';
-import Pptx from './pptx'; // 【【【新增第 1/2 行】】】: 在此導入 Pptx 元件
+import Pptx from './pptx';
+import Text from './text';
 import { previewHtmlFile } from '@/utils/file-util';
 import styles from './index.less';
 
