@@ -36,15 +36,24 @@ class Ppt(PptParser):
         callback(0.5, "Text extraction finished.")
         import aspose.slides as slides
         import aspose.pydrawing as drawing
+        import aspose.pydrawing.imaging as image #【修正點 1】: 確保 drawing.imaging 被正確導入為 image
+
         imgs = []
         with slides.Presentation(BytesIO(fnm)) as presentation:
             for i, slide in enumerate(presentation.slides[from_page: to_page]):
                 try:
                     with BytesIO() as buffered:
-                        slide.get_thumbnail(
-                            0.5, 0.5).save(
-                            buffered, drawing.imaging.ImageFormat.jpeg, quality=80)
-                        imgs.append(Image.open(buffered))
+                        thumb = slide.get_thumbnail()
+                        thumb.save(buffered, image.ImageFormat.jpeg)
+                        buffered.seek(0)
+                        # 【【【最終關鍵修正】】】
+                        # 1. 使用一個臨時變數 img 來接收圖片物件
+                        img = Image.open(buffered)
+                        # 2. 強制 PIL 載入所有圖片數據到記憶體中
+                        img.load()
+                        # 3. 將載入完畢的圖片物件加入列表
+                        imgs.append(img)
+                        
                 except RuntimeError as e:
                     raise RuntimeError(f'ppt parse error at page {i+1}, original error: {str(e)}') from e
         assert len(imgs) == len(

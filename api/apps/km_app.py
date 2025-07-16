@@ -101,7 +101,7 @@ def upload_public_document(kb_id: str):
         e, kb = KnowledgebaseService.get_by_id(kb_id)
         if not e:
             return get_data_error_result(message=f"Knowledge base with id {kb_id} not found.")
-        err, files = FileService.upload_document(kb, file_objs, kb.tenant_id)
+        err, files = FileService.upload_document(kb, file_objs, kb.created_by)
         if err:
             return get_data_error_result(message="\n".join(err))
         if not files:

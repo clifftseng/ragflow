@@ -39,10 +39,10 @@ export function UploaderTabs({ setFiles }: UploaderTabsProps) {
       <TabsContent value="account">
         <FileUploader
           maxFileCount={8}
-          maxSize={8 * 1024 * 1024}
+          maxSize={100 * 1024 * 1024}
           onValueChange={setFiles}
-          // accept={{ '*': [] }}
-          accept={acceptedMimeTypes}
+          accept={{ '*': [] }}
+          //accept={acceptedMimeTypes}
         />
       </TabsContent>
       <TabsContent value="password">{t('common.comingSoon')}</TabsContent>
