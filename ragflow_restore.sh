@@ -381,7 +381,9 @@ echo "所有數據庫和相關文件還原操作已完成！"
 # 步驟 3：最終啟動所有 RAGFlow 服務 (確保所有服務都運行)
 # ==============================================================================
 echo "啟動所有 Docker Compose 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch --profile gpu up -d
+# sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch --profile gpu up -d
+sudo docker compose -p ragflow -f docker-compose.yml up -d
+
 
 if [ $? -ne 0 ]; then
     echo "錯誤：Docker 服務最終啟動失敗！"
@@ -392,3 +394,5 @@ echo "請稍候片刻，等待服務完全啟動並健康。"
 echo "您可以通過 'sudo docker ps' 和 'sudo docker compose ps' 查看服務狀態。"
 echo "待服務啟動後，請訪問前端：http://localhost:9380"
 echo "以及公開頁面：http://localhost/km/63b2e52c615711f0942372232d04819a/dataset (請替換為實際的知識庫 ID)"
+echo "sudo docker compose -p ragflow -f docker-compose.yml logs -f ragflow"
+
