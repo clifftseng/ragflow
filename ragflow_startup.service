@@ -1,0 +1,35 @@
+
+
+## Ubuntu啟動指令存放位置
+# /etc/systemd/system/ragflow.service
+## 查看狀態
+# sudo systemctl status ragflow.service
+## 設定服務
+# 停止服務 
+# sudo systemctl stop ragflow-fix.service 
+# 禁止開機啟動 
+# sudo systemctl disable ragflow-fix.service 
+# 刪除服務檔案 
+# sudo rm /etc/systemd/system/ragflow-fix.service 
+## 重新載入 systemd，讓變更生效 
+# sudo systemctl daemon-reload
+
+
+[Unit]
+Description=RAGFlow Service
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/opt/ragflow/docker
+ExecStart=/usr/bin/docker compose -p ragflow -f docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose -p ragflow -f docker-compose.yml down
+#ExecStart=/usr/bin/docker compose -p ragflow up -d
+#ExecStop=/usr/bin/docker compose -p ragflow down
+#ExecStart=/usr/bin/docker compose -p ragflow -f docker-compose-base.yml -f docker-compose.yml up -d
+#ExecStop=/usr/bin/docker compose -p ragflow -f docker-compose-base.yml -f docker-compose.yml down
+[Install]
+WantedBy=multi-user.target
+
