@@ -3,7 +3,6 @@
 # 設定錯誤處理和調試模式
 set -e         # 任何命令失敗立即退出
 set -u         # 遇到未定義變數會報錯並退出
-set -x         # 啟用調試模式，顯示每個執行的命令
 set -o pipefail # 管道中任何命令失敗都會導致整個管道失敗
 
 # ==============================================================================
@@ -117,7 +116,7 @@ if [ ! -z "$INFINITY_VOLUME_PATH" ]; then echo "Infinity Volume 路徑: $INFINIT
 # 步驟 1：停止所有 RAGFlow 服務 (還原前必須停止，確保資料靜止)
 # ==============================================================================
 echo "停止所有 Docker Compose 服務以確保資料一致性 (還原操作需要所有服務停止)..."
-sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch --profile gpu down
+sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch  down
 echo "所有服務已停止。"
 
 # ==============================================================================
@@ -381,7 +380,6 @@ echo "所有數據庫和相關文件還原操作已完成！"
 # 步驟 3：最終啟動所有 RAGFlow 服務 (確保所有服務都運行)
 # ==============================================================================
 echo "啟動所有 Docker Compose 服務..."
-# sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch --profile gpu up -d
 sudo docker compose -p ragflow -f docker-compose.yml up -d
 
 
@@ -394,5 +392,6 @@ echo "請稍候片刻，等待服務完全啟動並健康。"
 echo "您可以通過 'sudo docker ps' 和 'sudo docker compose ps' 查看服務狀態。"
 echo "待服務啟動後，請訪問前端：http://localhost:9380"
 echo "以及公開頁面：http://localhost/km/63b2e52c615711f0942372232d04819a/dataset (請替換為實際的知識庫 ID)"
+echo "cd docker"
 echo "sudo docker compose -p ragflow -f docker-compose.yml logs -f ragflow"
 
