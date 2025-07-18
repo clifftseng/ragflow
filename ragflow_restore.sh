@@ -116,7 +116,7 @@ if [ ! -z "$INFINITY_VOLUME_PATH" ]; then echo "Infinity Volume 路徑: $INFINIT
 # 步驟 1：停止所有 RAGFlow 服務 (還原前必須停止，確保資料靜止)
 # ==============================================================================
 echo "停止所有 Docker Compose 服務以確保資料一致性 (還原操作需要所有服務停止)..."
-sudo docker compose -p ragflow -f docker-compose.yml --profile elasticsearch  down
+sudo docker compose -p ragflow -f docker-compose-gpu.yml --profile elasticsearch  down
 echo "所有服務已停止。"
 
 # ==============================================================================
@@ -131,9 +131,9 @@ sudo rm -rf "${MYSQL_VOLUME_PATH}"/.[!.]* || { echo "錯誤：無法清理 MySQL
 echo "現有 MySQL 資料已清理。"
 
 echo "啟動 MySQL 服務以便還原資料..."
-sudo docker compose -p ragflow -f docker-compose.yml up -d mysql
+sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d mysql
 echo "等待 MySQL 服務啟動並健康 (最多 60 秒)..."
-if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps mysql | grep "healthy"; do sleep 1; done'; then
+if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps mysql | grep "healthy"; do sleep 1; done'; then
     echo "錯誤：MySQL 服務未能健康啟動。還原失敗。"
     exit 1
 fi
@@ -184,7 +184,7 @@ echo "MySQL 資料還原完成。請檢查 /tmp/mysql_import_details_*.txt 以�
 # 2.2 還原 Redis 資料庫
 echo "開始還原 Redis 資料庫..."
 echo "停止 Redis 服務以便清理..."
-sudo docker compose -p ragflow -f docker-compose.yml stop redis || { echo "警告：停止 Redis 服務失敗，可能已經停止。繼續。"; }
+sudo docker compose -p ragflow -f docker-compose-gpu.yml stop redis || { echo "警告：停止 Redis 服務失敗，可能已經停止。繼續。"; }
 echo "清理現有 Redis 資料卷內容: ${REDIS_VOLUME_PATH}"
 sudo rm -rf "${REDIS_VOLUME_PATH}"/* || { echo "錯誤：無法清理 Redis Volume！"; exit 1; }
 echo "現有 Redis 資料已清理。"
@@ -202,9 +202,9 @@ else
 fi
 
 echo "啟動 Redis 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml up -d redis
+sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d redis
 echo "等待 Redis 服務啟動並健康 (最多 60 秒)..."
-if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps redis | grep "healthy"; do sleep 1; done'; then
+if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps redis | grep "healthy"; do sleep 1; done'; then
     echo "錯誤：Redis 服務未能健康啟動。還原失敗。"
     exit 1
 fi
@@ -214,7 +214,7 @@ echo "Redis 資料還原完成。"
 # 2.3 還原 MinIO 物件儲存
 echo "開始還原 MinIO 物件儲存..."
 echo "停止 MinIO 服務以便清理..."
-sudo docker compose -p ragflow -f docker-compose.yml stop minio || { echo "警告：停止 MinIO 服務失敗，可能已經停止。繼續。"; }
+sudo docker compose -p ragflow -f docker-compose-gpu.yml stop minio || { echo "警告：停止 MinIO 服務失敗，可能已經停止。繼續。"; }
 echo "清理現有 MinIO 資料卷內容: ${MINIO_VOLUME_PATH}"
 sudo rm -rf "${MINIO_VOLUME_PATH}"/* || { echo "錯誤：無法清理 MinIO Volume！"; exit 1; }
 echo "現有 MinIO 資料已清理。"
@@ -235,9 +235,9 @@ fi
 echo "MinIO 資料還原完成。"
 
 echo "啟動 MinIO 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml up -d minio
+sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d minio
 echo "等待 MinIO 服務啟動並健康 (最多 60 秒)..."
-if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps minio | grep "healthy"; do sleep 1; done'; then
+if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps minio | grep "healthy"; do sleep 1; done'; then
     echo "錯誤：MinIO 服務未能健康啟動。還原失敗。"
     exit 1
 fi
@@ -248,7 +248,7 @@ echo "MinIO 服務已健康運行。"
 if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
     echo "開始還原 Elasticsearch 資料庫..."
     echo "停止 Elasticsearch 服務以便清理..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop es01 || { echo "警告：停止 Elasticsearch 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop es01 || { echo "警告：停止 Elasticsearch 服務失敗，可能已經停止。繼續。"; }
     echo "清理現有 Elasticsearch 資料卷內容: ${ES_VOLUME_PATH}"
     sudo rm -rf "${ES_VOLUME_PATH}"/* || { echo "錯誤：無法清理 Elasticsearch Volume！"; exit 1; }
     echo "現有 Elasticsearch 資料已清理。"
@@ -274,9 +274,9 @@ if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
     echo "Elasticsearch 資料還原完成。"
 
     echo "啟動 Elasticsearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d es01
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d es01
     echo "等待 Elasticsearch 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps es01 | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps es01 | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：Elasticsearch 服務未能健康啟動。還原失敗。"
         exit 1
     fi
@@ -285,7 +285,7 @@ if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
 elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
     echo "開始還原 OpenSearch 資料庫..."
     echo "停止 OpenSearch 服務以便清理..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop opensearch01 || { echo "警告：停止 OpenSearch 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop opensearch01 || { echo "警告：停止 OpenSearch 服務失敗，可能已經停止。繼續。"; }
     echo "清理現有 OpenSearch 資料卷內容: ${OS_VOLUME_PATH}"
     sudo rm -rf "${OS_VOLUME_PATH}"/* || { echo "錯誤：無法清理 OpenSearch Volume！"; exit 1; }
     echo "現有 OpenSearch 資料已清理。"
@@ -309,9 +309,9 @@ elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
     echo "OpenSearch 資料備份完成。"
 
     echo "啟動 OpenSearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d opensearch01
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d opensearch01
     echo "等待 OpenSearch 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps opensearch01 | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps opensearch01 | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：OpenSearch 服務未能健康啟動。還原失敗。"
         exit 1
     fi
@@ -320,7 +320,7 @@ elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
 elif [[ "$DOC_ENGINE_SETTING" == "infinity" ]]; then
     echo "開始還原 Infinity 資料庫..."
     echo "停止 Infinity 服務以便清理..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop infinity || { echo "警告：停止 Infinity 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop infinity || { echo "警告：停止 Infinity 服務失敗，可能已經停止。繼續。"; }
     echo "清理現有 Infinity 資料卷內容: ${INFINITY_VOLUME_PATH}"
     sudo rm -rf "${INFINITY_VOLUME_PATH}"/* || { echo "錯誤：無法清理 Infinity Volume！"; exit 1; }
     echo "現有 Infinity 資料已清理。"
@@ -344,9 +344,9 @@ elif [[ "$DOC_ENGINE_SETTING" == "infinity" ]]; then
     echo "Infinity 資料還原完成。"
 
     echo "啟動 Infinity 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d infinity
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d infinity
     echo "等待 Infinity 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps infinity | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps infinity | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：Infinity 服務未能健康啟動。還原失敗。"
         exit 1
     fi
@@ -380,7 +380,7 @@ echo "所有數據庫和相關文件還原操作已完成！"
 # 步驟 3：最終啟動所有 RAGFlow 服務 (確保所有服務都運行)
 # ==============================================================================
 echo "啟動所有 Docker Compose 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml up -d
+sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d
 
 
 if [ $? -ne 0 ]; then
@@ -391,7 +391,6 @@ fi
 echo "請稍候片刻，等待服務完全啟動並健康。"
 echo "您可以通過 'sudo docker ps' 和 'sudo docker compose ps' 查看服務狀態。"
 echo "待服務啟動後，請訪問前端：http://localhost:9380"
-echo "以及公開頁面：http://localhost/km/63b2e52c615711f0942372232d04819a/dataset (請替換為實際的知識庫 ID)"
-echo "cd docker"
-echo "sudo docker compose -p ragflow -f docker-compose.yml logs -f ragflow"
-
+echo "以及公開頁面：http://localhost/km/3d4b5a284cf711f0a52cf1daa3ae99b5/dataset (請替換為實際的知識庫 ID)"
+cd /opt/ragflow/docker
+echo "sudo docker compose -p ragflow -f docker-compose-gpu.yml logs -f ragflow"

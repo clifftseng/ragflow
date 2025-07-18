@@ -114,7 +114,7 @@ echo "Redis 備份完成：${BACKUP_BATCH_DIR}/redis_dump.rdb"
 # 1.3 MinIO 物件儲存備份 (冷備份：停止服務，複製數據卷，再啟動)
 echo "備份 MinIO 物件儲存 (冷備份：需要短暫停機 MinIO 服務)..."
 echo "停止 MinIO 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml stop minio || { echo "警告：停止 MinIO 服務失敗，可能已經停止。繼續。"; }
+sudo docker compose -p ragflow -f docker-compose-gpu.yml stop minio || { echo "警告：停止 MinIO 服務失敗，可能已經停止。繼續。"; }
 echo "MinIO 服務已停止。"
 
 echo "清理舊的 MinIO 備份目標目錄 (如果存在)..."
@@ -136,9 +136,9 @@ fi
 echo "MinIO 資料備份完成。"
 
 echo "啟動 MinIO 服務..."
-sudo docker compose -p ragflow -f docker-compose.yml up -d minio
+sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d minio
 echo "等待 MinIO 服務啟動並健康 (最多 60 秒)..."
-if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps minio | grep "healthy"; do sleep 1; done'; then
+if ! timeout 60 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps minio | grep "healthy"; do sleep 1; done'; then
     echo "錯誤：MinIO 服務未能健康啟動。備份失敗。"
     exit 1
 fi
@@ -149,7 +149,7 @@ echo "MinIO 服務已健康運行。"
 if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
     echo "備份 Elasticsearch 資料庫 (冷備份：需要短暫停機 Elasticsearch 服務)..."
     echo "停止 Elasticsearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop es01 || { echo "警告：停止 Elasticsearch 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop es01 || { echo "警告：停止 Elasticsearch 服務失敗，可能已經停止。繼續。"; }
     echo "Elasticsearch 服務已停止。"
 
     echo "清理舊的 Elasticsearch 備份目標目錄 (如果存在)..."
@@ -174,9 +174,9 @@ if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
     echo "Elasticsearch 資料備份完成。"
 
     echo "啟動 Elasticsearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d es01
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d es01
     echo "等待 Elasticsearch 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps es01 | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps es01 | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：Elasticsearch 服務未能健康啟動。備份失敗。"
         exit 1
     fi
@@ -185,7 +185,7 @@ if [[ "$DOC_ENGINE_SETTING" == "elasticsearch" ]]; then
 elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
     echo "備份 OpenSearch 資料庫 (冷備份：需要短暫停機 OpenSearch 服務)..."
     echo "停止 OpenSearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop opensearch01 || { echo "警告：停止 OpenSearch 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop opensearch01 || { echo "警告：停止 OpenSearch 服務失敗，可能已經停止。繼續。"; }
     echo "OpenSearch 服務已停止。"
 
     echo "清理舊的 OpenSearch 備份目標目錄 (如果存在)..."
@@ -209,9 +209,9 @@ elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
     echo "OpenSearch 資料備份完成。"
 
     echo "啟動 OpenSearch 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d opensearch01
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d opensearch01
     echo "等待 OpenSearch 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps opensearch01 | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps opensearch01 | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：OpenSearch 服務未能健康啟動。備份失敗。"
         exit 1
     fi
@@ -220,7 +220,7 @@ elif [[ "$DOC_ENGINE_SETTING" == "opensearch" ]]; then
 elif [[ "$DOC_ENGINE_SETTING" == "infinity" ]]; then
     echo "備份 Infinity 資料庫 (冷備份：需要短暫停機 Infinity 服務)..."
     echo "停止 Infinity 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml stop infinity || { echo "警告：停止 Infinity 服務失敗，可能已經停止。繼續。"; }
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml stop infinity || { echo "警告：停止 Infinity 服務失敗，可能已經停止。繼續。"; }
     echo "Infinity 服務已停止。"
 
     echo "清理舊的 Infinity 備份目標目錄 (如果存在)..."
@@ -244,9 +244,9 @@ elif [[ "$DOC_ENGINE_SETTING" == "infinity" ]]; then
     echo "Infinity 資料備份完成。"
 
     echo "啟動 Infinity 服務..."
-    sudo docker compose -p ragflow -f docker-compose.yml up -d infinity
+    sudo docker compose -p ragflow -f docker-compose-gpu.yml up -d infinity
     echo "等待 Infinity 服務啟動並健康 (最多 120 秒)..."
-    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose.yml ps infinity | grep "healthy"; do sleep 1; done'; then
+    if ! timeout 120 bash -c 'until sudo docker compose -p ragflow -f docker-compose-gpu.yml ps infinity | grep "healthy"; do sleep 1; done'; then
         echo "錯誤：Infinity 服務未能健康啟動。備份失敗。"
         exit 1
     fi
