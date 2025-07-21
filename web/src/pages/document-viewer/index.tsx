@@ -6,7 +6,7 @@ import Docx from './docx';
 import Excel from './excel';
 import Image from './image';
 import Pdf from './pdf';
-
+import Pptx from './pptx'; // 【【【新增第 1/2 行】】】: 在此導入 Pptx 元件
 import { previewHtmlFile } from '@/utils/file-util';
 import styles from './index.less';
 
@@ -35,6 +35,7 @@ const DocumentViewer = () => {
       {(ext === 'xlsx' || ext === 'xls') && <Excel filePath={api}></Excel>}
 
       {ext === 'docx' && <Docx filePath={api}></Docx>}
+      {(ext === 'pptx' || ext === 'ppt') && <Pptx filePath={api}></Pptx>}
     </section>
   );
 };
