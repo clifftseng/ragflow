@@ -26,15 +26,12 @@ from copy import deepcopy
 from functools import wraps
 from hmac import HMAC
 from io import BytesIO
-from typing import Any, Optional, Union, Callable, Coroutine, Type
+from typing import Any, Callable, Coroutine, Optional, Type, Union
 from urllib.parse import quote, urlencode, unquote
 from uuid import uuid1
 
-import trio
-from rag.utils.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
-
-
 import requests
+import trio
 from flask import (
     Response,
     jsonify,
@@ -54,8 +51,8 @@ from api.db.db_models import APIToken
 from api.db.services.llm_service import LLMService, TenantLLMService
 from api.utils import CustomJSONEncoder, get_uuid, json_dumps
 from datetime import datetime, timezone
-from api.utils.km_auth import decrypt_token # 【【【重要修正：從新的 km_auth 導入】】】
-
+from api.utils.km_auth import decrypt_token
+from rag.utils.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
 
 requests.models.complexjson.dumps = functools.partial(json.dumps, cls=CustomJSONEncoder)
 
@@ -745,7 +742,7 @@ async def is_strong_enough(chat_model, embedding_model):
     async def _is_strong_enough():
         nonlocal chat_model, embedding_model
         if embedding_model:
-            with trio.fail_after(3):
+            with trio.fail_after(10):
                 _ = await trio.to_thread.run_sync(lambda: embedding_model.encode(["Are you strong enough!?"]))
         if chat_model:
             with trio.fail_after(30):
