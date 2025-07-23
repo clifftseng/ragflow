@@ -53,8 +53,12 @@ export const useNavigatePage = () => {
     navigate(Routes.Chat);
   }, [navigate]);
 
-  const navigateToAgentList = useCallback(() => {
+  const navigateToAgents = useCallback(() => {
     navigate(Routes.Agents);
+  }, [navigate]);
+
+  const navigateToAgentList = useCallback(() => {
+    navigate(Routes.AgentList);
   }, [navigate]);
 
   const navigateToAgent = useCallback(
@@ -153,7 +157,7 @@ export const useNavigatePage = () => {
     navigateToChunkParsedResult,
     getQueryString,
     navigateToChunk,
-    navigateToAgentList,
+    navigateToAgents,
     navigateToAgent,
     navigateToAgentTemplates,
     navigateToSearchList,
@@ -163,5 +167,6 @@ export const useNavigatePage = () => {
     navigateToPublicChunkPage,
     navigateToKmChunkParsedResult,
     navigateToKmDataset,
+    navigateToAgentList,
   };
 };
