@@ -1,7 +1,7 @@
 // 檔案路徑: web/src/pages/km/dataset/use-km-dataset-table-columns.tsx
 // 【【【最終修正版】】】
 
-import { Link, useParams } from 'umi';
+import { Link, useParams, useSearchParams } from 'umi';
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
@@ -104,6 +104,8 @@ export const useKmDatasetTableColumns = (
 ): ColumnDef<IDocument>[] => {
   const { t } = useTranslation('translation');
   const { id: kb_id } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   return useMemo(() => [
     { 
@@ -119,9 +121,11 @@ export const useKmDatasetTableColumns = (
           </div>
         );
 
+        const chunkUrl = `/km/${kb_id}/chunk/${row.original.id}/parsed-result${token ? `?token=${token}` : ''}`;
+
         if (hasChunks) {
           return (
-            <Link to={`/km/${kb_id}/chunk/${row.original.id}/parsed-result`} className="text-blue-500 hover:underline">
+            <Link to={chunkUrl} className="text-blue-500 hover:underline">
               {docNameContent}
             </Link>
           );
@@ -139,9 +143,12 @@ export const useKmDatasetTableColumns = (
         const chunkNum = row.original.chunk_num ?? 0;
         const hasChunks = chunkNum > 0;
 
+        const chunkUrl = `/km/${kb_id}/chunk/${row.original.id}/parsed-result${token ? `?token=${token}` : ''}`;
+
+
         if (hasChunks) {
           return (
-            <Link to={`/km/${kb_id}/chunk/${row.original.id}/parsed-result`} className="capitalize cursor-pointer text-blue-500 hover:underline">
+            <Link to={chunkUrl} className="capitalize cursor-pointer text-blue-500 hover:underline">
               {chunkNum}
             </Link>
           );
@@ -168,5 +175,5 @@ export const useKmDatasetTableColumns = (
           loading={isActionLoading} 
         /> 
     },
-  ], [t, onRerun, onRemove, onDownload, onShowRenameModal, onShowChunkMethod, onShowMeta, onStatusChange, onShowDeleteDialog, isActionLoading, isStatusLoading, kb_id]);
+  ], [t, onRerun, onRemove, onDownload, onShowRenameModal, onShowChunkMethod, onShowMeta, onStatusChange, onShowDeleteDialog, isActionLoading, isStatusLoading, kb_id, token]);
 };

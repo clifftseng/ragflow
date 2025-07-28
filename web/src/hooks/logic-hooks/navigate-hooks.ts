@@ -119,9 +119,15 @@ export const useNavigatePage = () => {
    */
   const navigateToKmDataset = useCallback(
     (kbId: string) => () => {
-      navigate(`/km/${kbId}/dataset`);
+      // 1. 從當前 URL 的查詢參數中獲取 token
+      const token = searchParams.get('token');
+      // 2. 構造包含 token 的目標 URL
+      const destination = `/km/${kbId}/dataset${token ? `?token=${token}` : ''}`;
+      // 3. 執行導航
+      navigate(destination);
     },
-    [navigate],
+    // 4. 將 searchParams 加入依賴陣列，以確保 token 能被正確讀取
+    [navigate, searchParams],
   );
 
 
@@ -132,7 +138,10 @@ export const useNavigatePage = () => {
    */
   const navigateToKmChunkParsedResult = (docId: string, kbId: string) => {
     return () => {
-      navigate(`/km/${kbId}/chunk/${docId}/parsed-result`);
+      // 【修正此處邏輯以備未來使用】
+      const token = searchParams.get('token');
+      const destination = `/km/${kbId}/chunk/${docId}/parsed-result${token ? `?token=${token}` : ''}`;
+      navigate(destination);
     };
   };
 

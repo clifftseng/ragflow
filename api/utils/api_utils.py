@@ -45,8 +45,61 @@ from api.constants import REQUEST_MAX_WAIT_SEC, REQUEST_WAIT_SEC
 from api.db.db_models import APIToken
 from api.db.services.llm_service import LLMService, TenantLLMService
 from api.utils import CustomJSONEncoder, get_uuid, json_dumps
+from datetime import datetime, timezone
+from api.utils.km_auth import decrypt_token # 【【【重要修正：從新的 km_auth 導入】】】
+
 
 requests.models.complexjson.dumps = functools.partial(json.dumps, cls=CustomJSONEncoder)
+
+
+def require_km_token(func):
+    """
+    Decorator to protect /km/* routes.
+    Validates a token from URL arguments based on RSA decryption and timestamp.
+    """
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        token = flask_request.args.get('token')
+        if not token:
+            return get_json_result(code=403, message="Access Forbidden: Token is missing.")
+
+        try:
+            # 步驟 1: 解密 Token 取得 Payload
+            payload = decrypt_token(token)
+
+            # 步驟 2: 驗證 Payload 結構與欄位型別
+            if not isinstance(payload, dict):
+                raise ValueError("Invalid payload format.")
+            
+            if 'id' not in payload or 'issuetime' not in payload:
+                raise ValueError("Payload must contain 'id' and 'issuetime'.")
+
+            if not isinstance(payload.get('id'), str):
+                raise ValueError("'id' must be a string.")
+
+            if not isinstance(payload.get('issuetime'), int):
+                raise ValueError("'issuetime' must be an integer timestamp.")
+
+            # 步驟 3: 驗證過期時間戳
+            expire_timestamp = payload["issuetime"]
+            current_timestamp = int(time.time())
+
+            if expire_timestamp <= current_timestamp:
+                return get_json_result(code=403, message="Access Forbidden: Token has expired.")
+
+        except FileNotFoundError as e:
+            logging.error(f"Server configuration error: {e}")
+            return server_error_response(e)
+        except ValueError as e:
+            logging.warning(f"Token validation error: {e}")
+            return get_json_result(code=403, message=f"Access Forbidden: {e}")
+        except Exception as e:
+            # 捕獲其他可能的解密或格式錯誤
+            logging.error(f"An unexpected error occurred during token validation: {e}")
+            return server_error_response(e)
+
+        return func(*args, **kwargs)
+    return decorated_function
 
 
 def request(**kwargs):

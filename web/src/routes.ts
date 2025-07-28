@@ -54,6 +54,11 @@ const routes = [
     layout: false,
   },
   {
+    path: '/km/forbidden',
+    component: '@/pages/km/forbidden',
+    layout: false,
+  },
+  {
     path: '/km/:id',
     layout: false, // 關鍵：確保此路由及其所有子路由，都脫離主應用的全域佈局
     // 注意：這裡不需要 component，因為它是一個佈局路由，由它的子路由來定義具體內容

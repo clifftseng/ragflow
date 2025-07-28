@@ -42,6 +42,11 @@ const KnowledgeFile = () => {
   const [searchParams] = useSearchParams();
   const id = searchParams.get('id');
   const publicUrl = id ? `${window.location.origin}/km/${id}/dataset` : '';
+  // 【【【修改點 1/3：直接在此處定義您的 Token】】】
+  const hardcodedToken = "k9AKhDk9Znww3qQ7dHwkmuzPQGs0gPY9BqUZX1RJF3Y-hyjtmlNRvu_J1ge5BFBN_N36HpDHLEcMCJwbq9tH-_Lv2o9HT7x-yfXYhoCsw0rADhx-OdBGmC6_ZxJTCCa2R2Y3aJC4RzJwDgH9mKMW3TMTZlS9lDU3Zp0LJFtwiD1x-Jy4uGv0TjOdu5XwB791FzOTJUwFNQBOq4vC0-qIkJpUrssNr6SuZVXF1Qzlsu_e9kUuiO8ZF_vpOQI1J8y6mjLIvCqlWAiFrBUq_hZO-2qmJgYRtWzi4yzzJg2KSELgmk3qCt2rT_DCQgh6ZLTDmTSJeq6oITgllZ3_0NhLKQ=="
+    // 【【【修改點 2/3：建構帶有 Token 的新 URL】】】
+  const publicUrlWithToken = publicUrl ? `${publicUrl}?token=${hardcodedToken}` : '';
+
 
   const { searchString, documents, pagination, handleInputChange } =
     useFetchNextDocumentList();
@@ -207,10 +212,23 @@ const KnowledgeFile = () => {
       <h3>{t('dataset')}</h3>
       <p>{t('datasetDescription')}</p>
       {publicUrl && (
-        <div className="text-sm text-gray-500 mt-2 mb-4">
+        <div className="text-sm text-gray-500 mt-2">
           <span>Public website: </span>
           <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
             {publicUrl}
+          </a>
+        </div>
+      )}
+      {publicUrlWithToken && (
+        <div>
+          <span>Public website with token: </span>
+          <a
+            href={publicUrlWithToken}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline"
+          >
+            [link]
           </a>
         </div>
       )}

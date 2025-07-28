@@ -20,10 +20,24 @@ from api.db.db_models import Knowledgebase, Task
 from api.db.services.task_service import TaskService, queue_tasks
 import os
 import io # 【【【新增】】】: 導入 io 模組
+from api.utils.api_utils import require_km_token
 
+#?token=dbbV1cU0i5ZIcCMjMi-q3JVveyKm90G2rXz7O6WrdHBuszNdfTZ78NtWCmdWh8zneXGn36HAWa2752eg1kOMNwbw1tu1onqMLiDJL7mvuTnlFPezqrhBT_c49ukJ973QLw1ubgDpSmVuAgaV2S-SNcT1pVJNeRfzeDhivMGolS6ke_qCXTqRrX7twfVYrcntSuqaDqIyPgj1SxGUbcX1XloVCHh7_2jxB6jxBC3LyrG-6ALg62UE91yFKy63YkYgreKqB8OdqO0baD8YgnLX119TfQlMko0-m2jIU8mrlL5NHC3V7vs1pZ4BKoipEOgD1UaXxMv8QGigxA-1EDx-ag==
+# @classmethod
+# def get_private_key(cls):
+#     if cls._private_key is None:
+#         try:
+#             with open("conf/private_key.pem", "rb") as f:
+#                 cls._private_key = serialization.load_pem_private_key(f.read(), password=None)
+#         except FileNotFoundError:
+#             logging.error("FATAL: conf/private_key.pem not found. Token validation will fail.")
+#             raise
+#     return cls._private_key
+        
 manager = Blueprint('km_app', __name__)
 
 @manager.route('/detail', methods=['GET'])
+@require_km_token
 def get_kb_detail():
     kb_id = request.args.get("kb_id")
     if not kb_id:
@@ -37,6 +51,7 @@ def get_kb_detail():
         return server_error_response(e)
 
 @manager.route('/documents', methods=['GET'])
+@require_km_token
 def get_documents():
     kb_id = request.args.get("kb_id")
     if not kb_id:
@@ -58,6 +73,7 @@ def get_documents():
 
 @manager.route("/document/create", methods=["POST"])
 @validate_request("name", "kb_id")
+@require_km_token
 def create_public_document():
     req = request.json
     kb_id = req["kb_id"]
@@ -86,6 +102,7 @@ def create_public_document():
         return server_error_response(e)
 
 @manager.route("/document/upload/<kb_id>", methods=["POST"])
+@require_km_token
 def upload_public_document(kb_id: str):
     if not kb_id:
         return get_data_error_result(message='Lack of "KB ID"')
@@ -125,6 +142,7 @@ def upload_public_document(kb_id: str):
 
 @manager.route("/document/rm", methods=["POST"])
 @validate_request("doc_ids")
+@require_km_token
 def rm_public_document():
     doc_ids = request.json["doc_ids"]
     if not isinstance(doc_ids, list):
@@ -142,6 +160,7 @@ def rm_public_document():
 
 @manager.route("/document/run", methods=["POST"])
 @validate_request("doc_ids", "run_type")
+@require_km_token
 def run_public_document():
     req = request.json
     doc_ids = req.get("doc_ids")
@@ -196,6 +215,7 @@ def run_public_document():
         return server_error_response(e)
 @manager.route("/document/rename", methods=["POST"])
 @validate_request("doc_id", "name")
+@require_km_token
 def rename_public_document():
     req = request.json
     doc_id = req["doc_id"]
@@ -233,6 +253,7 @@ def rename_public_document():
 
 @manager.route("/document/change_status", methods=["POST"])
 @validate_request("doc_id", "status")
+@require_km_token
 def change_status_public_document():
     req = request.json
     doc_id = req["doc_id"]
@@ -273,6 +294,7 @@ def change_status_public_document():
 
 @manager.route("/document/change_parser", methods=["POST"])
 @validate_request("doc_id", "parser_id", "parser_config")
+@require_km_token
 def change_parser_public():
     req = request.json
     doc_id = req["doc_id"]
@@ -291,6 +313,7 @@ def change_parser_public():
 
 @manager.route("/document/set_meta", methods=["POST"])
 @validate_request("doc_id", "meta")
+@require_km_token
 def set_meta_public():
     req = request.json
     doc_id = req["doc_id"]
@@ -320,6 +343,7 @@ def set_meta_public():
 
 @manager.route('/chunk/list', methods=['POST'])
 @validate_request("doc_id")
+@require_km_token
 def list_chunks_public():
     req = request.json
     doc_id = req["doc_id"]
@@ -367,6 +391,7 @@ def list_chunks_public():
 
 @manager.route('/chunk/set', methods=['POST'])
 @validate_request("doc_id", "chunk_id", "content_with_weight")
+@require_km_token
 def set_chunk_public():
     req = request.json
     content = req["content_with_weight"]
@@ -405,6 +430,7 @@ def set_chunk_public():
 
 @manager.route('/chunk/rm', methods=['POST'])
 @validate_request("chunk_ids", "doc_id")
+@require_km_token
 def rm_chunk_public():
     req = request.json
     doc_id = req["doc_id"]
@@ -439,6 +465,7 @@ def rm_chunk_public():
         return server_error_response(e)
 
 @manager.route("/document/thumbnails", methods=["GET"])
+@require_km_token
 def public_document_thumbnails():
     doc_id = request.args.get("doc_id")
     if not doc_id:
@@ -459,6 +486,7 @@ def public_document_thumbnails():
         logging.error(f"Error in public_document_thumbnails for doc_id {doc_id}: {e}")
         return server_error_response(e)
 @manager.route("/document/get/<doc_id>", methods=["GET"])
+@require_km_token
 def get_public_document(doc_id):
     """
     Handle public document download requests.
@@ -496,6 +524,7 @@ from api.db import LLMType
 from api.db.services.llm_service import LLMBundle
 @manager.route('/chunk/create', methods=['POST'])
 @validate_request("doc_id", "content_with_weight")
+@require_km_token
 def public_create_chunk():
     req = request.json
     doc_id = req["doc_id"]
@@ -558,6 +587,7 @@ def public_create_chunk():
 
 @manager.route('/chunk/switch', methods=['POST'])
 @validate_request("chunk_ids", "available_int", "doc_id")
+@require_km_token
 def switch_chunk_public():
     req = request.json
     doc_id = req["doc_id"]

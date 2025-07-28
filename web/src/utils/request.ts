@@ -1,3 +1,6 @@
+// 檔案路徑: ragflow/web/src/utils/request.ts
+// 【【【這是根據您提供的檔案內容修改的最終版本】】】
+
 import { Authorization } from '@/constants/authorization';
 import { ResponseType } from '@/interfaces/database/base';
 import i18n from '@/locales/config';
@@ -8,9 +11,11 @@ import authorizationUtil, {
 import { message, notification } from 'antd';
 import { RequestMethod, extend } from 'umi-request';
 import { convertTheKeysOfTheObjectToSnake } from './common-util';
+import { history } from 'umi'; // 【【【新增】】】 導入 history
 
 const FAILED_TO_FETCH = 'Failed to fetch';
 
+// ... (RetcodeMessage 與 ResultCode 型別定義保持不變)
 export const RetcodeMessage = {
   200: i18n.t('message.200'),
   201: i18n.t('message.201'),
@@ -47,10 +52,16 @@ export type ResultCode =
   | 503
   | 504;
 
+
 const errorHandler = (error: {
   response: Response;
   message: string;
 }): Response => {
+  // 【【【修改】】】 增加對我們自訂 403 錯誤的過濾，避免重複提示
+  if (error.message === 'Access Forbidden') {
+    return error.response;
+  }
+
   const { response } = error;
   if (error.message === FAILED_TO_FETCH) {
     notification.error({
@@ -81,8 +92,23 @@ request.interceptors.request.use((url: string, options: any) => {
   const data = convertTheKeysOfTheObjectToSnake(options.data);
   const params = convertTheKeysOfTheObjectToSnake(options.params);
 
+  // 【【【新增】】】 公開知識庫 (km) 的 Token 附加邏輯
+  let finalUrl = url;
+  if (window.location.pathname.startsWith('/km/')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const kmToken = urlParams.get('token');
+
+    if (kmToken && url.startsWith('/v1/km/')) {
+      const newUrlObj = new URL(url, window.location.origin);
+      if (!newUrlObj.searchParams.has('token')) {
+         newUrlObj.searchParams.set('token', kmToken);
+      }
+      finalUrl = newUrlObj.pathname + newUrlObj.search;
+    }
+  }
+
   return {
-    url,
+    url: finalUrl, // 【【【修改】】】 使用可能被修改過的 URL
     options: {
       ...options,
       data,
@@ -99,6 +125,16 @@ request.interceptors.request.use((url: string, options: any) => {
 });
 
 request.interceptors.response.use(async (response: Response, options) => {
+  // 【【【新增】】】 處理 403 Forbidden 錯誤的邏輯
+  if (response.status === 403 && window.location.pathname.startsWith('/km/')) {
+    if (window.location.pathname !== '/km/forbidden') {
+        history.push('/km/forbidden');
+    }
+    // 拋出一個錯誤來中斷後續的 promise 鏈，並觸發 errorHandler
+    return Promise.reject({ response, message: 'Access Forbidden' });
+  }
+
+  // 以下為您原有的邏輯，保持不變
   if (response?.status === 413 || response?.status === 504) {
     message.error(RetcodeMessage[response?.status as ResultCode]);
   }
