@@ -1,6 +1,10 @@
+// 檔案路徑: web/src/hooks/logic-hooks/navigate-hooks.ts
+// 【【【請覆蓋為以下內容】】】
+
 import { Routes } from '@/routes';
 import { useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'umi';
+// 【【【核心修正 1/3】：確認導入 useLocation】】】
+import { useNavigate, useParams, useSearchParams, useLocation } from 'umi';
 
 export enum QueryStringMap {
   KnowledgeId = 'knowledgeId',
@@ -11,6 +15,8 @@ export const useNavigatePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { id } = useParams();
+  // 【【【核心修正 2/3】：取得 location 物件】】】
+  const location = useLocation();
 
   const navigateToDatasetList = useCallback(() => {
     navigate(Routes.Datasets);
@@ -26,7 +32,6 @@ export const useNavigatePage = () => {
   const navigateToPublicChunk = (path: SegmentedValue) => {
     navigate(path as string);
   };
-
 
   const navigateToPublicChunkPage = (kb_id: string, doc_id: string) => () => {
     navigate(`/km/${kb_id}/chunk/${doc_id}/parsed-result`);
@@ -74,7 +79,6 @@ export const useNavigatePage = () => {
   const navigateToChunkParsedResult = useCallback(
     (id: string, knowledgeId?: string) => () => {
       navigate(
-        // `${Routes.ParsedResult}/${id}?${QueryStringMap.KnowledgeId}=${knowledgeId}`,
         `${Routes.ParsedResult}/chunks?id=${knowledgeId}&doc_id=${id}`,
       );
     },
@@ -100,7 +104,9 @@ export const useNavigatePage = () => {
   const navigateToChunk = useCallback(
     (route: Routes) => {
       navigate(
-        `${route}/${id}?${QueryStringMap.KnowledgeId}=${getQueryString(QueryStringMap.KnowledgeId)}`,
+        `${route}/${id}?${QueryStringMap.KnowledgeId}=${getQueryString(
+          QueryStringMap.KnowledgeId,
+        )}`,
       );
     },
     [getQueryString, id, navigate],
@@ -114,34 +120,26 @@ export const useNavigatePage = () => {
   );
 
   /**
-   * 【新增並補全】導航至公開知識庫詳情頁 (/km/:id/dataset)
-   * 用於 Chunk 頁面的返回按鈕。
+   * 【【【核心修正 3/3】：修改 navigateToKmDataset 函式】】】
+   * 導航至公開知識庫詳情頁 (/km/:id/dataset)，用於 Chunk 頁面的返回按鈕。
+   * 在路徑後方附加 location.search，以確保 token 等查詢參數被完整保留。
    */
   const navigateToKmDataset = useCallback(
     (kbId: string) => () => {
-      // 1. 從當前 URL 的查詢參數中獲取 token
-      const token = searchParams.get('token');
-      // 2. 構造包含 token 的目標 URL
-      const destination = `/km/${kbId}/dataset${token ? `?token=${token}` : ''}`;
-      // 3. 執行導航
-      navigate(destination);
+      // ✅ 正確做法：直接附加原始的查詢字串
+      navigate(`/km/${kbId}/dataset${location.search}`);
     },
-    // 4. 將 searchParams 加入依賴陣列，以確保 token 能被正確讀取
-    [navigate, searchParams],
+    // ✅ 將 location.search 加入依賴項
+    [navigate, location.search],
   );
 
-
-
   /**
-   * 【保留且正確】產生一個用於 onClick 的、導航到公開 Chunk 頁面的函式
-   * 用於 Dataset 列表頁點擊文件跳轉。
+   * 導航到公開 Chunk 頁面，用於 Dataset 列表頁點擊文件跳轉。
    */
   const navigateToKmChunkParsedResult = (docId: string, kbId: string) => {
     return () => {
-      // 【修正此處邏輯以備未來使用】
-      const token = searchParams.get('token');
-      const destination = `/km/${kbId}/chunk/${docId}/parsed-result${token ? `?token=${token}` : ''}`;
-      navigate(destination);
+      // ✅ 同樣使用 location.search 確保 token 被正確傳遞
+      navigate(`/km/${kbId}/chunk/${docId}/parsed-result${location.search}`);
     };
   };
 
@@ -164,6 +162,6 @@ export const useNavigatePage = () => {
     navigateToPublicChunk,
     navigateToPublicChunkPage,
     navigateToKmChunkParsedResult,
-    navigateToKmDataset, //【已補全並匯出】
+    navigateToKmDataset,
   };
 };
