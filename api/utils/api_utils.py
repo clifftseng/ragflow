@@ -23,7 +23,7 @@ from copy import deepcopy
 from functools import wraps
 from hmac import HMAC
 from io import BytesIO
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, unquote_plus, unquote
 from uuid import uuid1
 
 import requests
@@ -64,13 +64,21 @@ def require_km_token(func):
             return get_json_result(code=403, message="Access Forbidden: Token is missing.")
 
         try:
-            # 步驟 1: 解密 Token 取得 Payload
-            payload = decrypt_token(token)
+            # 【【【核心修正：步驟 1 - URL 解碼】】】
+            # 前端範例明確指出 token 經過了 quote_plus 編碼，所以這裡必須先解碼。
+            received_base64 = unquote(token)
 
-            # 步驟 2: 驗證 Payload 結構與欄位型別
+            # 步驟 2: 解密 Token 取得 Payload
+            # 現在 decrypt_token 函式接收的是一個純粹的 Base64 字串
+            payload = decrypt_token(received_base64)
+
+            logging.info(f"After decrypt: {payload}")
+
+
+            # 步驟 3: 驗證 Payload 結構與欄位型別 (此部分邏輯維持不變)
             if not isinstance(payload, dict):
                 raise ValueError("Invalid payload format.")
-            
+
             if 'id' not in payload or 'issuetime' not in payload:
                 raise ValueError("Payload must contain 'id' and 'issuetime'.")
 
@@ -80,7 +88,7 @@ def require_km_token(func):
             if not isinstance(payload.get('issuetime'), int):
                 raise ValueError("'issuetime' must be an integer timestamp.")
 
-            # 步驟 3: 驗證過期時間戳
+            # 步驟 4: 驗證過期時間戳 (此部分邏輯維持不變)
             expire_timestamp = payload["issuetime"]
             current_timestamp = int(time.time())
 

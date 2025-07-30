@@ -1,25 +1,21 @@
-
 import os
 import json
 import base64
 import logging
-# 【【【新增 cryptography 的 import】】】
-import cryptography 
+import binascii # 導入 binascii 以捕捉 Base64 解碼錯誤
+import cryptography
+import ast
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding # 只導入 padding
 from cryptography.hazmat.primitives import hashes
-# 【【【修正】】】InvalidPadding 在較新版本中已棄用，直接捕捉通用異常即可
-from cryptography.exceptions import InvalidSignature 
+# InvalidPadding 已棄用，我們捕捉更通用的異常
+from cryptography.exceptions import InvalidSignature
 
-# 【【【新增日誌記錄】】】
 logging.info(f"Cryptography library version: {cryptography.__version__}")
-
-# 從環境變數讀取私鑰路徑
 
 PRIVATE_KEY_PATH = "/ragflow/conf/private_key.pem"
 _private_key = None
 
-# ... (load_private_key 函式保持不變) ...
 def load_private_key():
     """
     延遲載入 RSA 私鑰，確保只在需要時載入一次。
@@ -37,32 +33,44 @@ def load_private_key():
             )
     return _private_key
 
-def decrypt_token(encrypted_token: str) -> dict:
+def decrypt_token(encrypted_b64: str) -> dict:
     """
-    使用 RSA 私鑰解密並驗證 Token。
+    使用 RSA 私鑰對 Base64 字串進行分段解密，並使用 PKCS1v1.5 填充。
+    此函式完全對應前端範例的加密邏輯。
     """
     try:
         private_key = load_private_key()
 
-        encrypted_data = base64.urlsafe_b64decode(encrypted_token)
+        # 步驟 1: Base64 解碼
+        # 範例中使用的是標準 Base64 編碼，而非 urlsafe 版本
+        encrypted_bytes = base64.b64decode(encrypted_b64)
 
-        decrypted_data = private_key.decrypt(
-            encrypted_data,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
+        # 步驟 2: 執行分段解密
+        # 解密時的分段長度等於金鑰的位元組長度 (2048 bits -> 256 bytes)
+        decrypt_fragment_length = private_key.key_size // 8
+        decrypted_chunks = []
+        offset = 0
+        while offset < len(encrypted_bytes):
+            chunk = encrypted_bytes[offset : offset + decrypt_fragment_length]
+            decrypted_chunk = private_key.decrypt(
+                chunk,
+                padding.PKCS1v15() # 【【【核心修正 1/2】】】: 使用與加密時相同的 PKCS1v15 填充
             )
-        )
+            decrypted_chunks.append(decrypted_chunk)
+            offset += decrypt_fragment_length
 
+        decrypted_data = b"".join(decrypted_chunks)
         decrypted_string = decrypted_data.decode('utf-8')
 
-        payload = json.loads(decrypted_string)
+        # 步驟 3: 解析 JSON 字串, 這可以安全地解析使用單引號的類 JSON 字串（實為 Python 字典字面量）
+        payload = ast.literal_eval(decrypted_string)
         return payload
 
-    # 【【【修正】】】
-    # 移除 InvalidPadding，因為它會被通用的 Exception 捕捉到
-    # `cryptography.exceptions.InvalidTag` 是解密失敗時更常見的異常
-    except (InvalidSignature, ValueError, TypeError, Exception) as e:
+    except (ValueError, TypeError, binascii.Error) as e:
+        # 捕捉 Base64 解碼、JSON 解析等格式錯誤
+        logging.error(f"Token decoding or parsing failed: {e}, encrypted_b64:{encrypted_b64}")
+        raise ValueError("Invalid Token Format") from e
+    except Exception as e:
+        # 【【【核心修正 2/2】】】: 捕捉 cryptography 的解密錯誤及其他所有未知異常
         logging.error(f"Token decryption failed: {e}")
         raise ValueError("Invalid Token") from e

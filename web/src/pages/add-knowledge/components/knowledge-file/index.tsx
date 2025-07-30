@@ -43,7 +43,7 @@ const KnowledgeFile = () => {
   const id = searchParams.get('id');
   const publicUrl = id ? `${window.location.origin}/km/${id}/dataset` : '';
   // 【【【修改點 1/3：直接在此處定義您的 Token】】】
-  const hardcodedToken = "k9AKhDk9Znww3qQ7dHwkmuzPQGs0gPY9BqUZX1RJF3Y-hyjtmlNRvu_J1ge5BFBN_N36HpDHLEcMCJwbq9tH-_Lv2o9HT7x-yfXYhoCsw0rADhx-OdBGmC6_ZxJTCCa2R2Y3aJC4RzJwDgH9mKMW3TMTZlS9lDU3Zp0LJFtwiD1x-Jy4uGv0TjOdu5XwB791FzOTJUwFNQBOq4vC0-qIkJpUrssNr6SuZVXF1Qzlsu_e9kUuiO8ZF_vpOQI1J8y6mjLIvCqlWAiFrBUq_hZO-2qmJgYRtWzi4yzzJg2KSELgmk3qCt2rT_DCQgh6ZLTDmTSJeq6oITgllZ3_0NhLKQ=="
+  const hardcodedToken = "YIgAof%2B%2BStsso88Dhicdgw5Dx%2BMxPd%2BamGBNgxq0CCpBhKzAHZ2H7sP4n3DwD%2BTd2hw3fed3qTfHep4nUGUe/J5UpsvgyCsk2yAcpKA8TDk2fYVpzG4ZF531Q3e8yoRFtIfYDiwenidJSaGesox/TX4gdwA7%2BHbuEUxPBXPgbfVKD5Ov9vCwqnLBe48I9XTtPHzSst3Rg1Kl6iCNBwx2D3l1VAd9yYI5%2ByFKcSCMNwUPV0SFVJrDTBjj1PyXe7fizpJPGkb6bCMPr1pN7rcqapGqsR2nRbBuuXCHq6zRZpv6YgGEKMBAmsBlj8Q59eZH%2BJj4VCwXazS/7b/9DGlPjg%3D%3D"
     // 【【【修改點 2/3：建構帶有 Token 的新 URL】】】
   const publicUrlWithToken = publicUrl ? `${publicUrl}?token=${hardcodedToken}` : '';
 
