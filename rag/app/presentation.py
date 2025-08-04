@@ -43,7 +43,7 @@ class Ppt(PptParser):
             for i, slide in enumerate(presentation.slides[from_page: to_page]):
                 try:
                     with BytesIO() as buffered:
-                        thumb = slide.get_thumbnail(0.5, 0.5)
+                        thumb = slide.get_thumbnail(0.1, 0.1)
                         thumb.save(buffered, drawing.imaging.ImageFormat.jpeg)
                         buffered.seek(0)
                         img = Image.open(buffered)
