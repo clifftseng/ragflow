@@ -247,7 +247,7 @@ const routes = [
     ],
   },
   {
-    path: Routes.Chat,
+    path: Routes.Chat + '/:id',
     layout: false,
     component: `@/pages${Routes.Chats}/chat`,
   },
