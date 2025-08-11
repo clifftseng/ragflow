@@ -178,7 +178,7 @@ const KnowledgeFile = () => {
       ),
       dataIndex: 'run',
       key: 'run',
-      filters: Object.entries(RunningStatus).map(([key, value]) => ({
+      filters: Object.values(RunningStatus).map((value) => ({
         text: t(`runningStatus${value}`),
         value: value,
       })),
