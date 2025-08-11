@@ -263,7 +263,7 @@ const routes = [
     ],
   },
   {
-    path: Routes.Search,
+    path: `${Routes.Search}/:id`,
     layout: false,
     component: `@/pages${Routes.Search}`,
   },
