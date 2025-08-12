@@ -52,6 +52,36 @@ from api.utils.km_auth import decrypt_token # 【【【重要修正：從新的 
 requests.models.complexjson.dumps = functools.partial(json.dumps, cls=CustomJSONEncoder)
 
 
+def verify_url_token(token: str) -> bool:
+    """
+    Verifies a URL token by decrypting it and checking its expiration.
+    Returns True if valid, False otherwise.
+    """
+
+    try:
+        received_base64 = unquote(token)
+        payload = decrypt_token(received_base64)
+
+        if not isinstance(payload, dict) or 'id' not in payload or 'issuetime' not in payload:
+            raise ValueError("Invalid payload format.")
+
+        if not isinstance(payload.get('issuetime'), int):
+            raise ValueError("'issuetime' must be an integer timestamp.")
+
+        expire_timestamp = payload["issuetime"]
+        current_timestamp = int(time.time())
+
+        if expire_timestamp <= current_timestamp:
+            logging.warning(f"Expired token received. Expiry: {expire_timestamp}, Current: {current_timestamp}")
+            return False
+
+        # If all checks pass
+        return True
+    except Exception as e:
+        logging.warning(f"URL token validation failed: {e}")
+        return False
+
+# 【【【修改現有裝飾器以複用新函式】】】
 def require_km_token(func):
     """
     Decorator to protect /km/* routes.
@@ -60,55 +90,16 @@ def require_km_token(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
         token = flask_request.args.get('token')
+
         if not token:
-            return get_json_result(code=403, message="Access Forbidden: Token is missing.")
+            return get_json_result(code=403, message="Access Forbidden:Missing token.")
 
-        try:
-            # 【【【核心修正：步驟 1 - URL 解碼】】】
-            # 前端範例明確指出 token 經過了 quote_plus 編碼，所以這裡必須先解碼。
-            received_base64 = unquote(token)
-
-            # 步驟 2: 解密 Token 取得 Payload
-            # 現在 decrypt_token 函式接收的是一個純粹的 Base64 字串
-            payload = decrypt_token(received_base64)
-
-            logging.info(f"After decrypt: {payload}")
-
-
-            # 步驟 3: 驗證 Payload 結構與欄位型別 (此部分邏輯維持不變)
-            if not isinstance(payload, dict):
-                raise ValueError("Invalid payload format.")
-
-            if 'id' not in payload or 'issuetime' not in payload:
-                raise ValueError("Payload must contain 'id' and 'issuetime'.")
-
-            if not isinstance(payload.get('id'), str):
-                raise ValueError("'id' must be a string.")
-
-            if not isinstance(payload.get('issuetime'), int):
-                raise ValueError("'issuetime' must be an integer timestamp.")
-
-            # 步驟 4: 驗證過期時間戳 (此部分邏輯維持不變)
-            expire_timestamp = payload["issuetime"]
-            current_timestamp = int(time.time())
-
-            if expire_timestamp <= current_timestamp:
-                return get_json_result(code=403, message="Access Forbidden: Token has expired.")
-
-        except FileNotFoundError as e:
-            logging.error(f"Server configuration error: {e}")
-            return server_error_response(e)
-        except ValueError as e:
-            logging.warning(f"Token validation error: {e}")
-            return get_json_result(code=403, message=f"Access Forbidden: {e}")
-        except Exception as e:
-            # 捕獲其他可能的解密或格式錯誤
-            logging.error(f"An unexpected error occurred during token validation: {e}")
-            return server_error_response(e)
+        # 使用新的輔助函式進行驗證
+        if not verify_url_token(token):
+            return get_json_result(code=403, message="Access Forbidden: Invalid or missing token.")
 
         return func(*args, **kwargs)
     return decorated_function
-
 
 def request(**kwargs):
     sess = requests.Session()

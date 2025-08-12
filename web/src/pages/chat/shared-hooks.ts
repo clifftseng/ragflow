@@ -29,6 +29,9 @@ export const useGetSharedChatSearchParams = () => {
       .filter(([key, value]) => key.startsWith(data_prefix))
       .map(([key, value]) => [key.replace(data_prefix, ''), value]),
   );
+  const tokenKey = searchParams.get('token_key');
+  if (tokenKey) (data as any).key = tokenKey;
+
   return {
     from: searchParams.get('from') as SharedFrom,
     sharedId: searchParams.get('shared_id'),
@@ -68,6 +71,7 @@ export const useSendSharedMessage = () => {
         quote: true,
         question: message.content,
         session_id: get(derivedMessages, '0.session_id'),
+        ...data,
       });
 
       if (isCompletionError(res)) {
@@ -76,7 +80,7 @@ export const useSendSharedMessage = () => {
         removeLatestMessage();
       }
     },
-    [send, conversationId, derivedMessages, setValue, removeLatestMessage],
+    [send, conversationId, derivedMessages, setValue, removeLatestMessage, data],
   );
 
   const handleSendMessage = useCallback(

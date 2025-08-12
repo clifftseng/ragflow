@@ -16,7 +16,6 @@
 import json
 import re
 import time
-
 import tiktoken
 from flask import Response, jsonify, request
 from api.db.services.conversation_service import ConversationService, iframe_completion
@@ -31,7 +30,7 @@ from api.db.services.dialog_service import DialogService, ask, chat
 from api.db.services.file_service import FileService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.utils import get_uuid
-from api.utils.api_utils import get_result, token_required, get_data_openai, get_error_data_result, validate_request, check_duplicate_ids
+from api.utils.api_utils import get_result, token_required, get_data_openai, get_error_data_result, validate_request, check_duplicate_ids, verify_url_token
 from api.db.services.llm_service import LLMBundle
 
 
@@ -741,13 +740,35 @@ Related search terms:
 
 @manager.route("/chatbots/<dialog_id>/completions", methods=["POST"])  # noqa: F821
 def chatbot_completions(dialog_id):
-    req = request.json
+    req = request.json or {}
 
-    token = request.headers.get("Authorization").split()
-    if len(token) != 2:
+    # 1) 把 body 裡的 data 物件（前端從 URL data_* 收集）攤平成同層參數
+    data_in_body = req.pop("data", None)
+    if isinstance(data_in_body, dict):
+        req.update(data_in_body)
+
+    # 2) 也支援直接從 URL 讀取 data_* 參數（以防前端沒帶到 body）
+    qs_data = {k[len("data_"):]: v for k, v in request.args.items() if k.startswith("data_")}
+    if qs_data:
+        req.update(qs_data)
+
+    # 3) 正規化幾種常見名稱 → 統一成 req["token"]
+    url_token = (req.get("token"))
+
+    if url_token:
+        if not verify_url_token(url_token):
+            return get_error_data_result(message='Token is not valid or empty!"')
+
+    # 若需要驗證簽章，可在這裡加上：
+    # if not verify_url_token(token): 
+    #     return get_error_data_result("Invalid token")
+
+    # 其餘程式碼保持不變 ↓ （Authorization 檢查 + iframe_completion）
+    token_hdr = request.headers.get("Authorization").split()
+    if len(token_hdr) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
-    token = token[1]
-    objs = APIToken.query(beta=token)
+    beta = token_hdr[1]
+    objs = APIToken.query(beta=beta)
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
