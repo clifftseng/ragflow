@@ -50,8 +50,7 @@ const {
   km_chunk_rm,
   km_chunk_switch,
   km_chunk_create,
-
-
+  getMeta,
 } = api;
 
 const methods = {
@@ -188,6 +187,10 @@ const methods = {
   documentFilter: {
     url: api.get_dataset_filter,
     method: 'post',
+  },
+  getMeta: {
+    url: getMeta,
+    method: 'get',
   },
 };
 
