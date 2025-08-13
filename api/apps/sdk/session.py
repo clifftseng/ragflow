@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 import json
 import re
 import time
@@ -753,11 +754,16 @@ def chatbot_completions(dialog_id):
         req.update(qs_data)
 
     # 3) 正規化幾種常見名稱 → 統一成 req["token"]
-    url_token = (req.get("token"))
 
+
+    url_token = req.get("token").
     if url_token:
-        if not verify_url_token(url_token):
-            return get_error_data_result(message='Token is not valid or empty!"')
+        if not verify_url_token(url_token):.
+            return get_error_data_result(message='Token is invalid!"')
+    # else:
+    #     logging.warning("AK03_no token detected")
+
+
 
     # 若需要驗證簽章，可在這裡加上：
     # if not verify_url_token(token): 

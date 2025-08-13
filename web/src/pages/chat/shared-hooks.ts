@@ -29,8 +29,8 @@ export const useGetSharedChatSearchParams = () => {
       .filter(([key, value]) => key.startsWith(data_prefix))
       .map(([key, value]) => [key.replace(data_prefix, ''), value]),
   );
-  const tokenKey = searchParams.get('token_key');
-  if (tokenKey) (data as any).key = tokenKey;
+  const tokenKey = searchParams.get('token');
+  if (tokenKey) (data as any).token = tokenKey;
 
   return {
     from: searchParams.get('from') as SharedFrom,
