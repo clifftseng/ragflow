@@ -756,9 +756,9 @@ def chatbot_completions(dialog_id):
     # 3) 正規化幾種常見名稱 → 統一成 req["token"]
 
 
-    url_token = req.get("token").
+    url_token = req.get("token")
     if url_token:
-        if not verify_url_token(url_token):.
+        if not verify_url_token(url_token):
             return get_error_data_result(message='Token is invalid!"')
     # else:
     #     logging.warning("AK03_no token detected")
