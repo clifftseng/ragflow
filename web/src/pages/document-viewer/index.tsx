@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'umi';
 import Docx from './docx';
 import Excel from './excel';
 import Image from './image';
+import Md from './md';
 import Pdf from './pdf';
 import Pptx from './pptx'; // 【【【新增第 1/2 行】】】: 在此導入 Pptx 元件
 import { previewHtmlFile } from '@/utils/file-util';
@@ -31,6 +32,9 @@ const DocumentViewer = () => {
           <Image src={api} preview={false}></Image>
         </Flex>
       )}
+      {ext === 'md' && <Md filePath={api}></Md>}
+      {ext === 'txt' && <Text filePath={api}></Text>}
+
       {ext === 'pdf' && <Pdf url={api}></Pdf>}
       {(ext === 'xlsx' || ext === 'xls') && <Excel filePath={api}></Excel>}
 

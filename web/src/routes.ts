@@ -8,6 +8,7 @@ export enum Routes {
   Agent = '/agent',
   AgentTemplates = '/agent-templates',
   Agents = '/agents',
+  AgentList = '/agent-list',
   Searches = '/next-searches',
   Search = '/next-search',
   Chats = '/next-chats',
@@ -34,6 +35,8 @@ export enum Routes {
   ParsedResult = `${Chunk}${Parsed}`,
   Result = '/result',
   ResultView = `${Chunk}${Result}`,
+  KnowledgeGraph = '/knowledge-graph',
+  AgentLogPage = '/agent-log-page',
 }
 
 const routes = [
@@ -51,6 +54,12 @@ const routes = [
   {
     path: '/chat/share',
     component: '@/pages/chat/share',
+    layout: false,
+  },
+  {
+
+    path: '/next-chat/share',
+    component: '@/pages/next-chats/share',
     layout: false,
   },
   {
@@ -166,6 +175,10 @@ const routes = [
             path: '/user-setting/api',
             component: '@/pages/user-setting/setting-api',
           },
+          {
+            path: `/user-setting${Routes.Mcp}`,
+            component: `@/pages${Routes.ProfileMcp}`,
+          },
         ],
       },
       {
@@ -175,6 +188,10 @@ const routes = [
       {
         path: '/flow',
         component: '@/pages/flow/list',
+      },
+      {
+        path: Routes.AgentList,
+        component: `@/pages/${Routes.Agents}`,
       },
       {
         path: '/flow/:id',
@@ -231,7 +248,7 @@ const routes = [
     ],
   },
   {
-    path: Routes.Chat,
+    path: Routes.Chat + '/:id',
     layout: false,
     component: `@/pages${Routes.Chats}/chat`,
   },
@@ -261,6 +278,11 @@ const routes = [
         component: `@/pages${Routes.Agents}`,
       },
     ],
+  },
+  {
+    path: `${Routes.AgentLogPage}/:id`,
+    layout: false,
+    component: `@/pages${Routes.Agents}${Routes.AgentLogPage}`,
   },
   {
     path: `${Routes.Agent}/:id`,
@@ -305,6 +327,10 @@ const routes = [
       {
         path: `${Routes.DatasetBase}${Routes.DatasetTesting}/:id`,
         component: `@/pages${Routes.DatasetBase}${Routes.DatasetTesting}`,
+      },
+      {
+        path: `${Routes.DatasetBase}${Routes.KnowledgeGraph}/:id`,
+        component: `@/pages${Routes.DatasetBase}${Routes.KnowledgeGraph}`,
       },
     ],
   },
