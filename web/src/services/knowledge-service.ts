@@ -51,6 +51,7 @@ const {
   km_chunk_switch,
   km_chunk_create,
   getMeta,
+  retrievalTestShare,
 } = api;
 
 const methods = {
@@ -191,6 +192,10 @@ const methods = {
   getMeta: {
     url: getMeta,
     method: 'get',
+  },
+  retrievalTestShare: {
+    url: retrievalTestShare,
+    method: 'post',
   },
 };
 
