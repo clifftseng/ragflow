@@ -38,6 +38,8 @@ export enum Routes {
   ResultView = `${Chunk}${Result}`,
   KnowledgeGraph = '/knowledge-graph',
   AgentLogPage = '/agent-log-page',
+  AgentShare = '/agent/share',
+  ChatShare = `${Chats}/share`,
 }
 
 const routes = [
@@ -87,6 +89,16 @@ const routes = [
         ],
       },
     ],
+  },
+  {
+    path: Routes.ChatShare,
+    component: `@/pages${Routes.ChatShare}`,
+    layout: false,
+  },
+  {
+    path: Routes.AgentShare,
+    component: `@/pages${Routes.AgentShare}`,
+    layout: false,
   },
   {
     path: '/next-chat/share',
