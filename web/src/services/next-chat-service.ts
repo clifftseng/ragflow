@@ -4,7 +4,7 @@ import { registerNextServer } from '@/utils/register-server';
 const {
   getDialog,
   setDialog,
-  listDialog,
+  // listDialog,
   removeDialog,
   getConversation,
   getConversationSSE,
@@ -27,6 +27,8 @@ const {
   mindmap,
   getRelatedQuestions,
   listNextDialog,
+  upload_and_parse,
+  fetchExternalChatInfo,
 } = api;
 
 const methods = {
@@ -125,6 +127,14 @@ const methods = {
   getRelatedQuestions: {
     url: getRelatedQuestions,
     method: 'post',
+  },
+  uploadAndParse: {
+    method: 'post',
+    url: upload_and_parse,
+  },
+  fetchExternalChatInfo: {
+    url: fetchExternalChatInfo,
+    method: 'get',
   },
 } as const;
 

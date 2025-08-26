@@ -19,7 +19,7 @@ import {
   JsonViewer,
   toLowerCaseStringAndDeleteChar,
   typeMap,
-} from './workFlowTimeline';
+} from './workflow-timeline';
 type IToolIcon =
   | Operator.ArXiv
   | Operator.GitHub
@@ -158,8 +158,9 @@ const ToolTimelineItem = ({
                           </span>
                         )}
                         <span className="text-text-secondary text-xs">
-                          {/* 0:00
-                          {x.data.elapsed_time?.toString().slice(0, 6)} */}
+                          {/* 0:00*/}
+                          {tool.elapsed_time?.toString().slice(0, 6) || ''}
+                          {tool.elapsed_time ? 's' : ''}
                         </span>
                         <span
                           className={cn(

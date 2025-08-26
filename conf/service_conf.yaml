@@ -9,6 +9,7 @@ mysql:
   port: 3306
   max_connections: 900
   stale_timeout: 300
+  max_allowed_packet: 1073741824
 minio:
   user: 'rag_flow'
   password: 'infini_rag_flow'

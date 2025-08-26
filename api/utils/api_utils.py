@@ -49,7 +49,8 @@ from werkzeug.http import HTTP_STATUS_CODES
 from api import settings
 from api.constants import REQUEST_MAX_WAIT_SEC, REQUEST_WAIT_SEC
 from api.db.db_models import APIToken
-from api.db.services.llm_service import LLMService, TenantLLMService
+from api.db.services.llm_service import LLMService
+from api.db.services.tenant_llm_service import TenantLLMService
 from api.utils import CustomJSONEncoder, get_uuid, json_dumps
 from datetime import datetime, timezone
 from api.utils.km_auth import decrypt_token # 【【【重要修正：從新的 km_auth 導入】】】
