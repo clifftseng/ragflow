@@ -894,7 +894,8 @@ def begin_inputs(agent_id):
             "title": cvs.title,
             "avatar": cvs.avatar,
             "inputs": canvas.get_component_input_form("begin"),
-            "prologue": canvas.get_prologue()
+            "prologue": canvas.get_prologue(),
+            "mode": canvas.get_mode()
         }
     )
 
