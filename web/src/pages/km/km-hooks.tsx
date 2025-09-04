@@ -5,7 +5,7 @@ import { IKnowledgeBase } from '@/interfaces/database/knowledge';
 import request from '@/utils/request';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useParams, useSearchParams } from 'umi';
+import { useParams, useSearchParams, useLocation, useNavigate } from 'umi';
 
 // 呼叫我們新建的後端 API - 獲取知識庫詳情
 const fetchKmDetail = (kb_id: string) => {
@@ -43,37 +43,25 @@ export const useFetchKmKnowledgeBaseConfiguration = () => {
 // 文件列表的鉤子 (清理後)
 export const useFetchKmDocumentList = () => {
   const { id: kb_id } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams(); // 這裡不再拿 setSearchParams
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchString, setSearchString] = useState('');
 
+  const token = searchParams.get('token') ?? '';
   const page = searchParams.get('page') ?? '1';
   const size = searchParams.get('size') ?? '10';
 
   const { data, isFetching: loading } = useQuery({
-    queryKey: ['kmDocumentList', kb_id, page, size, searchString],
+    queryKey: ['kmDocumentList', kb_id, token, page, size, searchString],
+    enabled: !!kb_id && !!token,
     initialData: { docs: [], total: 0 },
     gcTime: 0,
-    enabled: !!kb_id,
     queryFn: async () => {
-      if (!kb_id) return { docs: [], total: 0 };
-
-      // 【【【關鍵修正：添加 Cache Busting 參數】】】
-      // 我們在請求中加入一個不斷變化的時間戳 `_`，
-      // 這會讓瀏覽器認為每次都是新的請求，從而避免讀取舊的快取。
-      const apiParams = {
-        kb_id,
-        page,
-        size,
-        keywords: searchString,
-        '_': new Date().getTime(),
-      };
-
+      if (!kb_id || !token) return { docs: [], total: 0 };
+      const apiParams = { kb_id, page, size, keywords: searchString, token, '_': new Date().getTime() };
       const { data: res } = await fetchKmDocumentList(apiParams);
-
-      if (res.code === 0) {
-        return res.data;
-      }
-      return { docs: [], total: 0 };
+      return res.code === 0 ? res.data : { docs: [], total: 0 };
     },
   });
 
@@ -88,18 +76,11 @@ export const useFetchKmDocumentList = () => {
     setSearchString(value);
   };
 
-  const setPagination = ({
-    current,
-    pageSize,
-  }: {
-    current: number;
-    pageSize: number;
-  }) => {
-    setSearchParams((prev) => {
-      prev.set('page', current.toString());
-      prev.set('size', pageSize.toString());
-      return prev;
-    });
+  const setPagination = ({ current, pageSize }: { current: number; pageSize: number }) => {
+    const next = new URLSearchParams(location.search);
+    next.set('page', String(current));
+    next.set('size', String(pageSize));
+    navigate({ pathname: location.pathname, search: `?${next.toString()}` }, { replace: false });
   };
 
   const returnValue = {
