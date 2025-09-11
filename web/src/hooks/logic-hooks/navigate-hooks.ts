@@ -163,7 +163,15 @@ export const useNavigatePage = () => {
       navigate(`/km/${kbId}/chunk/${docId}/parsed-result${location.search}`);
     };
   };
-
+  const navigateToDataflowResult = useCallback(
+    (id: string, knowledgeId?: string) => () => {
+      navigate(
+        // `${Routes.ParsedResult}/${id}?${QueryStringMap.KnowledgeId}=${knowledgeId}`,
+        `${Routes.DataflowResult}/${id}`,
+      );
+    },
+    [navigate],
+  );
   return {
     navigateToDatasetList,
     navigateToDataset,
@@ -185,7 +193,9 @@ export const useNavigatePage = () => {
     navigateToPublicChunkPage,
     navigateToKmChunkParsedResult,
     navigateToKmDataset,
+    navigateToDataflowResult,
     navigateToAgentList,
     navigateToOldProfile,
+    navigateToDataflowResult,
   };
 };
