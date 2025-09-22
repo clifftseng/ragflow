@@ -41,6 +41,7 @@ export enum Routes {
   AgentLogPage = '/agent-log-page',
   AgentShare = '/agent/share',
   ChatShare = `${Chats}/share`,
+  ChatWidget = `${Chats}/widget`,
   UserSetting = '/user-setting',
   DataFlows = '/data-flows',
   DataFlow = '/data-flow',
@@ -110,6 +111,11 @@ const routes = [
   {
     path: '/next-chat/share',
     component: '@/pages/next-chats/share',
+    layout: false,
+  },
+  {
+    path: Routes.ChatWidget,
+    component: `@/pages${Routes.ChatWidget}`,
     layout: false,
   },
   {
