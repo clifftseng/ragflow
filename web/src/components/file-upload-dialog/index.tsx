@@ -110,7 +110,7 @@ export function FileUploadDialog({
 
   return (
     <Dialog open onOpenChange={hideModal}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('fileManager.uploadFile')}</DialogTitle>
         </DialogHeader>
