@@ -1,6 +1,6 @@
 export enum Routes {
   Root = '/',
-  Login = '/login',
+  Login = '/login-next',
   Logout = '/logout',
   Home = '/home',
   Datasets = '/datasets',
@@ -53,7 +53,7 @@ const routes = [
   
   {
     path: '/login',
-    component: '@/pages/login',
+    component: '@/pages/login-next',
     layout: false,
   },
   {
