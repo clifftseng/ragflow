@@ -18,9 +18,11 @@ export enum Routes {
   Files = '/files',
   ProfileSetting = '/profile-setting',
   Profile = '/profile',
+  Api = '/api',
   Mcp = '/mcp',
   Team = '/team',
   Plan = '/plan',
+  System = '/system',
   Model = '/model',
   Prompt = '/prompt',
   ProfileMcp = `${ProfileSetting}${Mcp}`,
@@ -399,7 +401,7 @@ const routes = [
       {
         path: '/user-setting/profile',
         // component: '@/pages/user-setting/setting-profile',
-        component: '@/pages/user-setting/setting-profile',
+        component: '@/pages/user-setting/profile',
       },
       {
         path: '/user-setting/locale',
@@ -418,11 +420,11 @@ const routes = [
         component: '@/pages/user-setting/setting-team',
       },
       {
-        path: '/user-setting/system',
+        path: `/user-setting${Routes.System}`,
         component: '@/pages/user-setting/setting-system',
       },
       {
-        path: '/user-setting/api',
+        path: `/user-setting${Routes.Api}`,
         component: '@/pages/user-setting/setting-api',
       },
       {
