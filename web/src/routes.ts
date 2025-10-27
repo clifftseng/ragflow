@@ -44,8 +44,6 @@ export enum Routes {
   ChatShare = `${Chats}/share`,
   ChatWidget = `${Chats}/widget`,
   UserSetting = '/user-setting',
-  DataFlows = '/data-flows',
-  DataFlow = '/data-flow',
   DataSetOverview = '/dataset-overview',
   DataSetSetting = '/dataset-setting',
   DataflowResult = '/dataflow-result',
@@ -432,22 +430,6 @@ const routes = [
         component: `@/pages${Routes.ProfileMcp}`,
       },
     ],
-  },
-  {
-    path: Routes.DataFlows,
-    layout: false,
-    component: '@/layouts/next',
-    routes: [
-      {
-        path: Routes.DataFlows,
-        component: `@/pages${Routes.DataFlows}`,
-      },
-    ],
-  },
-  {
-    path: `${Routes.DataFlow}/:id`,
-    layout: false,
-    component: `@/pages${Routes.DataFlow}`,
   },
 ];
 
