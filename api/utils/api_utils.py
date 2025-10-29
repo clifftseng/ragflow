@@ -51,7 +51,7 @@ from api import settings
 from api.constants import REQUEST_MAX_WAIT_SEC, REQUEST_WAIT_SEC
 from api.db import ActiveEnum
 from api.db.db_models import APIToken
-from api.utils.json import CustomJSONEncoder, json_dumps
+from api.utils.json_encode import CustomJSONEncoder, json_dumps
 from api.utils import get_uuid
 from datetime import datetime, timezone
 from api.utils.km_auth import decrypt_token
