@@ -29,7 +29,6 @@ import trio
 from flask import (
     Response,
     jsonify,
-    make_response,
 )
 from flask_login import current_user
 from flask import (
@@ -44,6 +43,8 @@ from api.utils.json_encode import CustomJSONEncoder
 from api.utils.km_auth import decrypt_token
 from rag.utils.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
 from common.connection_utils import timeout
+from common.constants import RetCode
+
 
 requests.models.complexjson.dumps = functools.partial(json.dumps, cls=CustomJSONEncoder)
 
@@ -132,7 +133,7 @@ def get_exponential_backoff_interval(retries, full_jitter=False):
         countdown = random.randrange(countdown + 1)
     # Adjust according to maximum wait time and account for negative values.
     return max(0, countdown)
-def get_data_error_result(code=settings.RetCode.DATA_ERROR, message="Sorry! Data missing!"):
+def get_data_error_result(code=RetCode.DATA_ERROR, message="Sorry! Data missing!"):
     logging.exception(Exception(message))
     result_dict = {"code": code, "message": message}
     response = {}
@@ -149,21 +150,21 @@ def server_error_response(e):
     try:
         msg = repr(e).lower()
         if getattr(e, "code", None) == 401 or ("unauthorized" in msg) or ("401" in msg):
-            return get_json_result(code=settings.RetCode.UNAUTHORIZED, message=repr(e))
+            return get_json_result(code=RetCode.UNAUTHORIZED, message=repr(e))
     except Exception as ex:
         logging.warning(f"error checking authorization: {ex}")
 
     if len(e.args) > 1:
         try:
             serialized_data = serialize_for_json(e.args[1])
-            return get_json_result(code=settings.RetCode.EXCEPTION_ERROR, message=repr(e.args[0]), data=serialized_data)
+            return get_json_result(code=RetCode.EXCEPTION_ERROR, message=repr(e.args[0]), data=serialized_data)
         except Exception:
-            return get_json_result(code=settings.RetCode.EXCEPTION_ERROR, message=repr(e.args[0]), data=None)
+            return get_json_result(code=RetCode.EXCEPTION_ERROR, message=repr(e.args[0]), data=None)
     if repr(e).find("index_not_found_exception") >= 0:
-        return get_json_result(code=settings.RetCode.EXCEPTION_ERROR,
+        return get_json_result(code=RetCode.EXCEPTION_ERROR,
                                message="No chunk found, please upload file and parse it.")
 
-    return get_json_result(code=settings.RetCode.EXCEPTION_ERROR, message=repr(e))
+    return get_json_result(code=RetCode.EXCEPTION_ERROR, message=repr(e))
 
 
 def validate_request(*args, **kwargs):
@@ -192,7 +193,7 @@ def validate_request(*args, **kwargs):
                 if error_arguments:
                     error_string += "required argument values: {}".format(
                         ",".join(["{}={}".format(a[0], a[1]) for a in error_arguments]))
-                return get_json_result(code=settings.RetCode.ARGUMENT_ERROR, message=error_string)
+                return get_json_result(code=RetCode.ARGUMENT_ERROR, message=error_string)
             return func(*_args, **_kwargs)
 
         return decorated_function
@@ -206,7 +207,7 @@ def not_allowed_parameters(*params):
             input_arguments = flask_request.json or flask_request.form.to_dict()
             for param in params:
                 if param in input_arguments:
-                    return get_json_result(code=settings.RetCode.ARGUMENT_ERROR,
+                    return get_json_result(code=RetCode.ARGUMENT_ERROR,
                                            message=f"Parameter {param} isn't allowed")
             return f(*args, **kwargs)
 
@@ -223,13 +224,13 @@ def active_required(f):
         usr = UserService.filter_by_id(user_id)
         # check is_active
         if not usr or not usr.is_active == ActiveEnum.ACTIVE.value:
-            return get_json_result(code=settings.RetCode.FORBIDDEN, message="User isn't active, please activate first.")
+            return get_json_result(code=RetCode.FORBIDDEN, message="User isn't active, please activate first.")
         return f(*args, **kwargs)
 
     return wrapper
 
 
-def get_json_result(code: settings.RetCode = settings.RetCode.SUCCESS, message="success", data=None):
+def get_json_result(code: RetCode = RetCode.SUCCESS, message="success", data=None):
     response = {"code": code, "message": message, "data": data}
     return jsonify(response)
 
@@ -240,40 +241,21 @@ def apikey_required(func):
         token = flask_request.headers.get("Authorization").split()[1]
         objs = APIToken.query(token=token)
         if not objs:
-            return build_error_result(message="API-KEY is invalid!", code=settings.RetCode.FORBIDDEN)
+            return build_error_result(message="API-KEY is invalid!", code=RetCode.FORBIDDEN)
         kwargs["tenant_id"] = objs[0].tenant_id
         return func(*args, **kwargs)
 
     return decorated_function
 
 
-def build_error_result(code=settings.RetCode.FORBIDDEN, message="success"):
+def build_error_result(code=RetCode.FORBIDDEN, message="success"):
     response = {"code": code, "message": message}
     response = jsonify(response)
     response.status_code = code
     return response
 
 
-def construct_response(code=settings.RetCode.SUCCESS, message="success", data=None, auth=None):
-    result_dict = {"code": code, "message": message, "data": data}
-    response_dict = {}
-    for key, value in result_dict.items():
-        if value is None and key != "code":
-            continue
-        else:
-            response_dict[key] = value
-    response = make_response(jsonify(response_dict))
-    if auth:
-        response.headers["Authorization"] = auth
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Method"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Expose-Headers"] = "Authorization"
-    return response
-
-
-def construct_json_result(code: settings.RetCode = settings.RetCode.SUCCESS, message="success", data=None):
+def construct_json_result(code: RetCode = RetCode.SUCCESS, message="success", data=None):
     if data is None:
         return jsonify({"code": code, "message": message})
     else:
@@ -294,14 +276,14 @@ def token_required(func):
         objs = APIToken.query(token=token)
         if not objs:
             return get_json_result(data=False, message="Authentication error: API key is invalid!",
-                                   code=settings.RetCode.AUTHENTICATION_ERROR)
+                                   code=RetCode.AUTHENTICATION_ERROR)
         kwargs["tenant_id"] = objs[0].tenant_id
         return func(*args, **kwargs)
 
     return decorated_function
 
 
-def get_result(code=settings.RetCode.SUCCESS, message="", data=None, total=None):
+def get_result(code=RetCode.SUCCESS, message="", data=None, total=None):
     """
     Standard API response format:
     {
@@ -313,7 +295,7 @@ def get_result(code=settings.RetCode.SUCCESS, message="", data=None, total=None)
     """
     response = {"code": code}
 
-    if code == settings.RetCode.SUCCESS:
+    if code == RetCode.SUCCESS:
         if data is not None:
             response["data"] = data
         if total is not None:
@@ -325,7 +307,7 @@ def get_result(code=settings.RetCode.SUCCESS, message="", data=None, total=None)
 
 def get_error_data_result(
         message="Sorry! Data missing!",
-        code=settings.RetCode.DATA_ERROR,
+        code=RetCode.DATA_ERROR,
 ):
     result_dict = {"code": code, "message": message}
     response = {}
@@ -338,15 +320,15 @@ def get_error_data_result(
 
 
 def get_error_argument_result(message="Invalid arguments"):
-    return get_result(code=settings.RetCode.ARGUMENT_ERROR, message=message)
+    return get_result(code=RetCode.ARGUMENT_ERROR, message=message)
 
 
 def get_error_permission_result(message="Permission error"):
-    return get_result(code=settings.RetCode.PERMISSION_ERROR, message=message)
+    return get_result(code=RetCode.PERMISSION_ERROR, message=message)
 
 
 def get_error_operating_result(message="Operating error"):
-    return get_result(code=settings.RetCode.OPERATING_ERROR, message=message)
+    return get_result(code=RetCode.OPERATING_ERROR, message=message)
 
 
 def generate_confirmation_token():
