@@ -42,7 +42,7 @@ from graphrag.general.mind_map_extractor import MindMapExtractor
 from rag.app.tag import label_question
 from rag.prompts.template import load_prompt
 from rag.prompts.generator import cross_languages, gen_meta_filter, keyword_extraction, chunks_format
-from common.contants import RetCode
+from common.constants import RetCode
 
 @manager.route("/chats/<chat_id>/sessions", methods=["POST"])  # noqa: F821
 @token_required
