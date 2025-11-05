@@ -37,7 +37,7 @@ from flask import (
 from peewee import OperationalError
 
 from api import settings
-from api.db import ActiveEnum
+from common.constants import ActiveEnum
 from api.db.db_models import APIToken
 from api.utils.json_encode import CustomJSONEncoder
 from api.utils.km_auth import decrypt_token
