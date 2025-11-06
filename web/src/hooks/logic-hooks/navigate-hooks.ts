@@ -177,12 +177,20 @@ export const useNavigatePage = () => {
       navigate(`/km/${kbId}/chunk/${docId}/parsed-result${location.search}`);
     };
   };
+  const navigateToDataSourceDetail = useCallback(
+    (id?: string) => {
+      navigate(
+        `${Routes.UserSetting}${Routes.DataSource}${Routes.DataSourceDetailPage}?id=${id}`,
+      );
+    },
+    [navigate],
+  );
   const navigateToDataflowResult = useCallback(
     (props: NavigateToDataflowResultProps) => () => {
       let params: string[] = [];
       Object.keys(props).forEach((key) => {
-        if (props[key]) {
-          params.push(`${key}=${props[key]}`);
+        if (props[key as keyof typeof props]) {
+          params.push(`${key}=${props[key as keyof typeof props]}`);
         }
       });
       navigate(
@@ -219,5 +227,6 @@ export const useNavigatePage = () => {
     navigateToOldProfile,
     navigateToDataflowResult,
     navigateToDataFile,
+    navigateToDataSourceDetail,
   };
 };
