@@ -31,7 +31,8 @@ redis:
   db: 1
   password: 'infini_rag_flow'
   host: 'redis:6379'
-  host: 'redis:6379'
+task_executor:
+  message_queue_type: 'redis'
 # postgres:
 #   name: 'rag_flow'
 #   user: 'rag_flow'
