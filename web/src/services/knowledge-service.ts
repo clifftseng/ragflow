@@ -60,6 +60,7 @@ const {
   traceGraphRag,
   runRaptor,
   traceRaptor,
+  check_embedding,
 } = api;
 
 const methods = {
@@ -240,6 +241,11 @@ const methods = {
   },
   pipelineRerun: {
     url: api.pipelineRerun,
+    method: 'post',
+  },
+
+  checkEmbedding: {
+    url: check_embedding,
     method: 'post',
   },
 };
