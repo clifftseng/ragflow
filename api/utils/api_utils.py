@@ -40,7 +40,8 @@ from common.constants import ActiveEnum
 from api.db.db_models import APIToken
 from api.utils.json_encode import CustomJSONEncoder
 from api.utils.km_auth import decrypt_token
-from rag.utils.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
+from common.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
+from common.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
 from api.db.services.tenant_llm_service import LLMFactoriesService
 from common.connection_utils import timeout
 from common.constants import RetCode
