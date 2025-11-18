@@ -19,7 +19,7 @@ import re
 import time
 
 import tiktoken
-from flask import Response, jsonify, request
+from quart import Response, jsonify, request
 
 from agent.canvas import Canvas
 from api.db.db_models import APIToken
@@ -45,8 +45,8 @@ from common import settings
 
 @manager.route("/chats/<chat_id>/sessions", methods=["POST"])  # noqa: F821
 @token_required
-def create(tenant_id, chat_id):
-    req = request.json
+async def create(tenant_id, chat_id):
+    req = await request.json
     req["dialog_id"] = chat_id
     dia = DialogService.query(tenant_id=tenant_id, id=req["dialog_id"], status=StatusEnum.VALID.value)
     if not dia:
@@ -98,8 +98,8 @@ def create_agent_session(tenant_id, agent_id):
 
 @manager.route("/chats/<chat_id>/sessions/<session_id>", methods=["PUT"])  # noqa: F821
 @token_required
-def update(tenant_id, chat_id, session_id):
-    req = request.json
+async def update(tenant_id, chat_id, session_id):
+    req = await request.json
     req["dialog_id"] = chat_id
     conv_id = session_id
     conv = ConversationService.query(id=conv_id, dialog_id=chat_id)
@@ -120,8 +120,8 @@ def update(tenant_id, chat_id, session_id):
 
 @manager.route("/chats/<chat_id>/completions", methods=["POST"])  # noqa: F821
 @token_required
-def chat_completion(tenant_id, chat_id):
-    req = request.json
+async def chat_completion(tenant_id, chat_id):
+    req = await request.json
     if not req:
         req = {"question": ""}
     if not req.get("session_id"):
@@ -150,7 +150,7 @@ def chat_completion(tenant_id, chat_id):
 @manager.route("/chats_openai/<chat_id>/chat/completions", methods=["POST"])  # noqa: F821
 @validate_request("model", "messages")  # noqa: F821
 @token_required
-def chat_completion_openai_like(tenant_id, chat_id):
+async def chat_completion_openai_like(tenant_id, chat_id):
     """
     OpenAI-like chat completion API that simulates the behavior of OpenAI's completions endpoint.
 
@@ -207,7 +207,7 @@ def chat_completion_openai_like(tenant_id, chat_id):
         if reference:
             print(completion.choices[0].message.reference)
     """
-    req = request.get_json()
+    req = await request.get_json()
 
     need_reference = bool(req.get("reference", False))
 
@@ -384,8 +384,8 @@ def chat_completion_openai_like(tenant_id, chat_id):
 @manager.route("/agents_openai/<agent_id>/chat/completions", methods=["POST"])  # noqa: F821
 @validate_request("model", "messages")  # noqa: F821
 @token_required
-def agents_completion_openai_compatibility(tenant_id, agent_id):
-    req = request.json
+async def agents_completion_openai_compatibility(tenant_id, agent_id):
+    req = await request.json
     tiktokenenc = tiktoken.get_encoding("cl100k_base")
     messages = req.get("messages", [])
     if not messages:
@@ -444,8 +444,8 @@ def agents_completion_openai_compatibility(tenant_id, agent_id):
 
 @manager.route("/agents/<agent_id>/completions", methods=["POST"])  # noqa: F821
 @token_required
-def agent_completions(tenant_id, agent_id):
-    req = request.json
+async def agent_completions(tenant_id, agent_id):
+    req = await request.json
 
     if req.get("stream", True):
 
@@ -611,13 +611,13 @@ def list_agent_session(tenant_id, agent_id):
 
 @manager.route("/chats/<chat_id>/sessions", methods=["DELETE"])  # noqa: F821
 @token_required
-def delete(tenant_id, chat_id):
+async def delete(tenant_id, chat_id):
     if not DialogService.query(id=chat_id, tenant_id=tenant_id, status=StatusEnum.VALID.value):
         return get_error_data_result(message="You don't own the chat")
 
     errors = []
     success_count = 0
-    req = request.json
+    req = await request.json
     convs = ConversationService.query(dialog_id=chat_id)
     if not req:
         ids = None
@@ -662,10 +662,10 @@ def delete(tenant_id, chat_id):
 
 @manager.route("/agents/<agent_id>/sessions", methods=["DELETE"])  # noqa: F821
 @token_required
-def delete_agent_session(tenant_id, agent_id):
+async def delete_agent_session(tenant_id, agent_id):
     errors = []
     success_count = 0
-    req = request.json
+    req = await request.json
     cvs = UserCanvasService.query(user_id=tenant_id, id=agent_id)
     if not cvs:
         return get_error_data_result(f"You don't own the agent {agent_id}")
@@ -717,8 +717,8 @@ def delete_agent_session(tenant_id, agent_id):
 
 @manager.route("/sessions/ask", methods=["POST"])  # noqa: F821
 @token_required
-def ask_about(tenant_id):
-    req = request.json
+async def ask_about(tenant_id):
+    req = await request.json
     if not req.get("question"):
         return get_error_data_result("`question` is required.")
     if not req.get("dataset_ids"):
@@ -756,8 +756,8 @@ def ask_about(tenant_id):
 
 @manager.route("/sessions/related_questions", methods=["POST"])  # noqa: F821
 @token_required
-def related_questions(tenant_id):
-    req = request.json
+async def related_questions(tenant_id):
+    req = await request.json
     if not req.get("question"):
         return get_error_data_result("`question` is required.")
     question = req["question"]
@@ -807,8 +807,8 @@ Related search terms:
 
 
 @manager.route("/chatbots/<dialog_id>/completions", methods=["POST"])  # noqa: F821
-def chatbot_completions(dialog_id):
-    req = request.json or {}
+async def chatbot_completions(dialog_id):
+    req = await request.json
 
     # 1) 把 body 裡的 data 物件（前端從 URL data_* 收集）攤平成同層參數
     data_in_body = req.pop("data", None)
@@ -884,8 +884,8 @@ def chatbots_inputs(dialog_id):
 
 
 @manager.route("/agentbots/<agent_id>/completions", methods=["POST"])  # noqa: F821
-def agent_bot_completions(agent_id):
-    req = request.json
+async def agent_bot_completions(agent_id):
+    req = await request.json
 
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
@@ -929,7 +929,7 @@ def begin_inputs(agent_id):
 
 @manager.route("/searchbots/ask", methods=["POST"])  # noqa: F821
 @validate_request("question", "kb_ids")
-def ask_about_embedded():
+async def ask_about_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -938,7 +938,7 @@ def ask_about_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     uid = objs[0].tenant_id
 
     search_id = req.get("search_id", "")
@@ -968,7 +968,7 @@ def ask_about_embedded():
 
 @manager.route("/searchbots/retrieval_test", methods=["POST"])  # noqa: F821
 @validate_request("kb_id", "question")
-def retrieval_test_embedded():
+async def retrieval_test_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -977,7 +977,7 @@ def retrieval_test_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     page = int(req.get("page", 1))
     size = int(req.get("size", 30))
     question = req["question"]
@@ -1067,7 +1067,7 @@ def retrieval_test_embedded():
 
 @manager.route("/searchbots/related_questions", methods=["POST"])  # noqa: F821
 @validate_request("question")
-def related_questions_embedded():
+async def related_questions_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -1076,7 +1076,7 @@ def related_questions_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     tenant_id = objs[0].tenant_id
     if not tenant_id:
         return get_error_data_result(message="permission denined.")
@@ -1143,7 +1143,7 @@ def detail_share_embedded():
 
 @manager.route("/searchbots/mindmap", methods=["POST"])  # noqa: F821
 @validate_request("question", "kb_ids")
-def mindmap():
+async def mindmap():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -1153,7 +1153,7 @@ def mindmap():
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
     tenant_id = objs[0].tenant_id
-    req = request.json
+    req = await request.json
 
     search_id = req.get("search_id", "")
     search_app = SearchService.get_detail(search_id) if search_id else {}
