@@ -17,9 +17,16 @@ export const useNavigatePage = () => {
   // 【【【核心修正 2/3】：取得 location 物件】】】
   const location = useLocation();
 
-  const navigateToDatasetList = useCallback(() => {
-    navigate(Routes.Datasets);
-  }, [navigate]);
+  const navigateToDatasetList = useCallback(
+    ({ isCreate = false }: { isCreate?: boolean }) => {
+      if (isCreate) {
+        navigate(Routes.Datasets + '?isCreate=true');
+      } else {
+        navigate(Routes.Datasets);
+      }
+    },
+    [navigate],
+  );
 
   const navigateToDataset = useCallback(
     (id: string) => () => {
