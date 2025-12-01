@@ -37,6 +37,7 @@ oceanbase:
     port: 2881
 redis:
   db: 1
+  username: ''
   password: 'infini_rag_flow'
   host: 'redis:6379'
 task_executor:
