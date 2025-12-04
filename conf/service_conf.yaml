@@ -59,6 +59,8 @@ task_executor:
 #   prefix_path: 'prefix_path'
 #   signature_version: 'v4'
 #   addressing_style: 'path'
+# gcs:
+#   bucket: 'bridgtl-edm-d-bucket-ragflow'
 # oss:
 #   access_key: ''
 #   secret_key: ''
