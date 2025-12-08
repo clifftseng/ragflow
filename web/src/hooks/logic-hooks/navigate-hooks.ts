@@ -28,6 +28,17 @@ export const useNavigatePage = () => {
     [navigate],
   );
 
+  const navigateToMemoryList = useCallback(
+    ({ isCreate = false }: { isCreate?: boolean }) => {
+      if (isCreate) {
+        navigate(Routes.Memories + '?isCreate=true');
+      } else {
+        navigate(Routes.Memories);
+      }
+    },
+    [navigate],
+  );
+
   const navigateToDataset = useCallback(
     (id: string) => () => {
       // navigate(`${Routes.DatasetBase}${Routes.DataSetOverview}/${id}`);
@@ -113,6 +124,12 @@ export const useNavigatePage = () => {
   const navigateToSearch = useCallback(
     (id: string) => () => {
       navigate(`${Routes.Search}/${id}`);
+    },
+    [navigate],
+  );
+  const navigateToMemory = useCallback(
+    (id: string) => () => {
+      navigate(`${Routes.Memory}${Routes.MemoryMessage}/${id}`);
     },
     [navigate],
   );
@@ -235,5 +252,7 @@ export const useNavigatePage = () => {
     navigateToDataflowResult,
     navigateToDataFile,
     navigateToDataSourceDetail,
+    navigateToMemory,
+    navigateToMemoryList,
   };
 };
