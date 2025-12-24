@@ -61,10 +61,10 @@ const {
   traceRaptor,
   check_embedding,
   kbUpdateMetaData,
+  documentUpdateMetaData,
 } = api;
 
 const methods = {
-  // 知识库管理
   createKb: {
     url: create_kb,
     method: 'post',
@@ -246,6 +246,10 @@ const methods = {
   },
   kbUpdateMetaData: {
     url: kbUpdateMetaData,
+    method: 'post',
+  },
+  documentUpdateMetaData: {
+    url: documentUpdateMetaData,
     method: 'post',
   },
   // getMetaData: {
