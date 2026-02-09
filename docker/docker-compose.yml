@@ -41,7 +41,14 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ../history_data_agent:/ragflow/history_data_agent
       - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+      - ../conf/private_key.pem:/ragflow/conf/private_key.pem
       - ./entrypoint.sh:/ragflow/entrypoint.sh
+      - ../api/apps/km_app.py:/ragflow/api/apps/km_app.py
+      - ../api/utils/km_auth.py:/ragflow/api/utils/km_auth.py
+      - ../api/utils/api_utils.py:/ragflow/api/utils/api_utils.py
+      - ../api/db/services/knowledgebase_service.py:/ragflow/api/db/services/knowledgebase_service.py
+      - ../api/db/services/document_service.py:/ragflow/api/db/services/document_service.py
+      - ../api/apps/km_search_app.py:/ragflow/api/apps/km_search_app.py
     env_file: .env
     networks:
       - ragflow
@@ -90,7 +97,14 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ../history_data_agent:/ragflow/history_data_agent
       - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+      - ../conf/private_key.pem:/ragflow/conf/private_key.pem
       - ./entrypoint.sh:/ragflow/entrypoint.sh
+      - ../api/apps/km_app.py:/ragflow/api/apps/km_app.py
+      - ../api/utils/km_auth.py:/ragflow/api/utils/km_auth.py
+      - ../api/utils/api_utils.py:/ragflow/api/utils/api_utils.py
+      - ../api/db/services/knowledgebase_service.py:/ragflow/api/db/services/knowledgebase_service.py
+      - ../api/db/services/document_service.py:/ragflow/api/db/services/document_service.py
+      - ../api/apps/km_search_app.py:/ragflow/api/apps/km_search_app.py
     env_file: .env
     networks:
       - ragflow

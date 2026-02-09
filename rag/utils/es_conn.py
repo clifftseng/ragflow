@@ -186,7 +186,7 @@ class ESConnection(ESConnectionBase):
             try:
                 res = []
                 r = self.es.bulk(index=index_name, operations=operations,
-                                 refresh=False, timeout="60s")
+                                 refresh=True, timeout="60s")
                 if re.search(r"False", str(r["errors"]), re.IGNORECASE):
                     return res
 
@@ -267,7 +267,8 @@ class ESConnection(ESConnectionBase):
             if (not isinstance(k, str) or not v) and k != "available_int":
                 continue
             if isinstance(v, str):
-                v = re.sub(r"(['\n\r]|\\.)", " ", v)
+                if k != "content_with_weight":
+                    v = re.sub(r"(['\n\r]|\\.)", " ", v)
                 params[f"pp_{k}"] = v
                 scripts.append(f"ctx._source.{k}=params.pp_{k};")
             elif isinstance(v, int) or isinstance(v, float):

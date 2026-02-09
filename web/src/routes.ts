@@ -132,6 +132,45 @@ const routes = [
   },
 
   {
+    path: '/km/forbidden',
+    component: '@/pages/km/forbidden',
+    layout: false,
+  },
+  {
+    path: '/km/:id',
+    layout: false,
+    routes: [
+      { path: '/km/:id', redirect: `/km/:id/dataset` },
+      {
+        path: 'dataset',
+        component: '@/pages/km/dataset',
+      },
+      {
+        path: 'testing',
+        component: '@/pages/km/testing',
+      },
+      {
+        path: 'setting',
+        component: '@/pages/km/setting',
+      },
+      {
+        path: 'search',
+        component: '@/pages/next-search',
+      },
+      {
+        path: 'chunk/:doc_id',
+        component: '@/pages/km/chunk',
+        routes: [
+          {
+            path: 'parsed-result',
+            component: '@/pages/km/chunk/parsed-result',
+          },
+        ],
+      },
+    ],
+  },
+
+  {
     path: Routes.AgentList,
     component: `@/pages/${Routes.Agents}`,
   },

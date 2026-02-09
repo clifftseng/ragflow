@@ -13,11 +13,9 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { FileUploader } from '../file-uploader';
-import { FileMimeType } from '@/constants/common';
 import { RAGFlowFormItem } from '../ragflow-form';
 import { Form } from '../ui/form';
 import { Switch } from '../ui/switch';
-import { FileMimeType } from '@/constants/common';
 
 function buildUploadFormSchema(t: TFunction) {
   const FormSchema = z.object({
@@ -52,16 +50,6 @@ function UploadForm({ submit, showParseOnCreation }: UploadFormProps) {
       fileList: [],
     },
   });
-
-  const acceptedMimeTypes = Object.values(FileMimeType).reduce(
-    (acc, mimeType) => {
-      // FileMimeType 是一個 enum，它的值就是我們需要的字串
-      acc[mimeType] = [];
-      return acc;
-    },
-    {} as Record<string, string[]>,
-  );
-
 
   return (
     <Form {...form}>

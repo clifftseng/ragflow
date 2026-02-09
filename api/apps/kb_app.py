@@ -179,7 +179,7 @@ async def update_metadata_setting():
 
 
 @manager.route('/detail', methods=['GET'])  # noqa: F821
-# @login_required
+@login_required
 def detail():
     kb_id = request.args["kb_id"]
     try:

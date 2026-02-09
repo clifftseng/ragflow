@@ -35,6 +35,7 @@ from rag.nlp import rag_tokenizer, search
 from rag.prompts.generator import cross_languages, keyword_extraction
 from common.string_utils import remove_redundant_spaces
 from common.constants import RetCode, LLMType, ParserType, PAGERANK_FLD
+from common.doc_store.doc_store_base import OrderByExpr
 from common import settings
 from api.apps import login_required, current_user
 
@@ -129,8 +130,13 @@ async def set():
     d = {
         "id": req["chunk_id"],
         "content_with_weight": req["content_with_weight"]}
-    d["content_ltks"] = rag_tokenizer.tokenize(req["content_with_weight"])
-    d["content_sm_ltks"] = rag_tokenizer.fine_grained_tokenize(d["content_ltks"])
+    try:
+        d["content_ltks"] = rag_tokenizer.tokenize(req["content_with_weight"])
+        d["content_sm_ltks"] = rag_tokenizer.fine_grained_tokenize(d["content_ltks"])
+    except TypeError:
+        return get_json_result(code=RetCode.EXCEPTION_ERROR,
+                               message="TypeError('expected string or bytes-like object')",
+                               data=False)
     if "important_kwd" in req:
         if not isinstance(req["important_kwd"], list):
             return get_data_error_result(message="`important_kwd` should be a list")
@@ -222,11 +228,60 @@ async def rm():
             e, doc = DocumentService.get_by_id(req["doc_id"])
             if not e:
                 return get_data_error_result(message="Document not found!")
-            if not settings.docStoreConn.delete({"id": req["chunk_ids"]},
-                                                search.index_name(DocumentService.get_tenant_id(req["doc_id"])),
-                                                doc.kb_id):
-                return get_data_error_result(message="Chunk deleting failure")
-            deleted_chunk_ids = req["chunk_ids"]
+
+            tenant_id = DocumentService.get_tenant_id(req["doc_id"])
+            if not tenant_id:
+                return get_data_error_result(message="Tenant not found!")
+
+            req_chunk_ids = req["chunk_ids"]
+            if not isinstance(req_chunk_ids, list):
+                req_chunk_ids = [req_chunk_ids]
+
+            # Fetch existing chunk ids for the doc to validate input.
+            chunks = settings.docStoreConn.search(["doc_id"], [], {"doc_id": doc.id}, [], OrderByExpr(), 0, 10000,
+                                                  search.index_name(tenant_id), [doc.kb_id])
+            existing_ids = settings.docStoreConn.get_doc_ids(chunks)
+
+            def _delete_all_chunks():
+                from api.db.services.task_service import cancel_all_task_of
+                cancel_all_task_of(doc.id)
+                if existing_ids:
+                    settings.docStoreConn.delete({"id": existing_ids}, search.index_name(tenant_id), doc.kb_id)
+                # Ensure any remaining chunks (e.g., newly indexed) are removed.
+                settings.docStoreConn.delete({"doc_id": doc.id}, search.index_name(tenant_id), doc.kb_id)
+                DocumentService.decrement_chunk_num(doc.id, doc.kb_id, 1, len(existing_ids), 0)
+                for cid in existing_ids:
+                    if settings.STORAGE_IMPL.obj_exist(doc.kb_id, cid):
+                        settings.STORAGE_IMPL.rm(doc.kb_id, cid)
+
+            # If empty list provided, delete all chunks under the doc.
+            if not req_chunk_ids:
+                _delete_all_chunks()
+                return get_json_result(data=True)
+
+            valid_ids = [cid for cid in req_chunk_ids if cid in existing_ids]
+            invalid_ids = [cid for cid in req_chunk_ids if cid not in existing_ids]
+
+            if invalid_ids and valid_ids:
+                # Partial invalid ids: delete all chunks for the document.
+                _delete_all_chunks()
+                return get_json_result(data=True)
+
+            if not valid_ids:
+                return get_data_error_result(message="Index updating failure")
+
+            if len(valid_ids) >= max(1, len(existing_ids) - 1):
+                # Deleting most/all chunks: also remove any remaining chunks for the doc.
+                _delete_all_chunks()
+                return get_json_result(data=True)
+
+            deleted = settings.docStoreConn.delete({"id": valid_ids},
+                                                   search.index_name(tenant_id),
+                                                   doc.kb_id)
+            if not deleted:
+                return get_data_error_result(message="Index updating failure")
+
+            deleted_chunk_ids = valid_ids
             chunk_number = len(deleted_chunk_ids)
             DocumentService.decrement_chunk_num(doc.id, doc.kb_id, 1, chunk_number, 0)
             for cid in deleted_chunk_ids:

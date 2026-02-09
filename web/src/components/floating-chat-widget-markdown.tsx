@@ -39,6 +39,7 @@ import styles from './floating-chat-widget-markdown.less';
 import { useIsDarkTheme } from './theme-provider';
 
 const getChunkIndex = (match: string) => Number(match.replace(/\[|\]/g, ''));
+const katexOptions = { strict: 'ignore', throwOnError: false } as const;
 
 const FloatingChatWidgetMarkdown = ({
   reference,
@@ -274,7 +275,11 @@ const FloatingChatWidgetMarkdown = ({
   return (
     <div className="floating-chat-widget">
       <Markdown
-        rehypePlugins={[rehypeWrapReference, rehypeKatex, rehypeRaw]}
+        rehypePlugins={[
+          rehypeWrapReference,
+          [rehypeKatex, katexOptions],
+          rehypeRaw,
+        ]}
         remarkPlugins={[remarkGfm, remarkMath]}
         className="text-sm leading-relaxed space-y-2 prose-sm max-w-full"
         components={

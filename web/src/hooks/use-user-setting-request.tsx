@@ -24,7 +24,21 @@ import DOMPurify from 'dompurify';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { history } from 'umi';
+import { history, useLocation } from 'umi';
+
+const isPublicPath = (pathname: string) => {
+  return (
+    pathname.startsWith('/km') ||
+    pathname.startsWith('/chat/share') ||
+    pathname.startsWith('/next-search') ||
+    pathname.startsWith('/next-search/share')
+  );
+};
+
+const useIsPublicPage = () => {
+  const location = useLocation();
+  return useMemo(() => isPublicPath(location.pathname), [location.pathname]);
+};
 
 export const enum UserSettingApiAction {
   UserInfo = 'userInfo',
@@ -46,11 +60,13 @@ export const enum UserSettingApiAction {
 
 export const useFetchUserInfo = (): ResponseGetType<IUserInfo> => {
   const { i18n } = useTranslation();
+  const isPublicPage = useIsPublicPage();
 
   const { data, isFetching: loading } = useQuery({
     queryKey: [UserSettingApiAction.UserInfo],
     initialData: {},
     gcTime: 0,
+    enabled: !isPublicPage,
     queryFn: async () => {
       const { data } = await userService.user_info();
       if (data.code === 0) {
@@ -71,10 +87,12 @@ export const useFetchTenantInfo = (
   showEmptyModelWarn = false,
 ): ResponseGetType<ITenantInfo> => {
   const { t } = useTranslation();
+  const isPublicPage = useIsPublicPage();
   const { data, isFetching: loading } = useQuery({
     queryKey: [UserSettingApiAction.TenantInfo, showEmptyModelWarn],
     initialData: {},
     gcTime: 0,
+    enabled: !isPublicPage,
     queryFn: async () => {
       const { data: res } = await userService.get_tenant_info();
       if (res.code === 0) {
@@ -213,6 +231,7 @@ export const useFetchManualSystemTokenList = () => {
 };
 
 export const useFetchSystemTokenList = () => {
+  const isPublicPage = useIsPublicPage();
   const {
     data,
     isFetching: loading,
@@ -221,6 +240,7 @@ export const useFetchSystemTokenList = () => {
     queryKey: [UserSettingApiAction.FetchSystemTokenList],
     initialData: [],
     gcTime: 0,
+    enabled: !isPublicPage,
     queryFn: async () => {
       const { data } = await userService.listToken();
 
@@ -282,6 +302,7 @@ export const useCreateSystemToken = () => {
 export const useListTenantUser = () => {
   const { data: tenantInfo } = useFetchTenantInfo();
   const tenantId = tenantInfo.tenant_id;
+  const isPublicPage = useIsPublicPage();
   const {
     data,
     isFetching: loading,
@@ -290,7 +311,7 @@ export const useListTenantUser = () => {
     queryKey: [UserSettingApiAction.ListTenantUser, tenantId],
     initialData: [],
     gcTime: 0,
-    enabled: !!tenantId,
+    enabled: !isPublicPage && !!tenantId,
     queryFn: async () => {
       const { data } = await listTenantUser(tenantId);
 
@@ -365,6 +386,7 @@ export const useDeleteTenantUser = () => {
 export const useListTenant = () => {
   const { data: tenantInfo } = useFetchTenantInfo();
   const tenantId = tenantInfo.tenant_id;
+  const isPublicPage = useIsPublicPage();
   const {
     data,
     isFetching: loading,
@@ -373,7 +395,7 @@ export const useListTenant = () => {
     queryKey: [UserSettingApiAction.ListTenant, tenantId],
     initialData: [],
     gcTime: 0,
-    enabled: !!tenantId,
+    enabled: !isPublicPage && !!tenantId,
     queryFn: async () => {
       const { data } = await listTenant();
 
@@ -450,9 +472,11 @@ export const useDeleteLangfuseConfig = () => {
 };
 
 export const useFetchLangfuseConfig = () => {
+  const isPublicPage = useIsPublicPage();
   const { data, isFetching: loading } = useQuery<ILangfuseConfig>({
     queryKey: [UserSettingApiAction.FetchLangfuseConfig],
     gcTime: 0,
+    enabled: !isPublicPage,
     queryFn: async () => {
       const { data } = await userService.getLangfuseConfig();
 

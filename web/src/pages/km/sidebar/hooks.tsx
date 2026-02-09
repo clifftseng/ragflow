@@ -1,4 +1,3 @@
-import { Routes } from '@/routes';
 import { useCallback } from 'react';
 import { useNavigate, useParams } from 'umi';
 
@@ -7,8 +6,9 @@ export const useHandleMenuClick = () => {
   const { id } = useParams();
 
   const handleMenuClick = useCallback(
-    (key: Routes) => () => {
-      navigate(`${Routes.DatasetBase}${key}/${id}`);
+    (key: string) => () => {
+      if (!id) return;
+      navigate(`/km/${id}${key}`);
     },
     [id, navigate],
   );

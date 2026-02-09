@@ -2,7 +2,7 @@ import { ReactComponent as FilterIcon } from '@/assets/filter.svg';
 import { KnowledgeRouteKey } from '@/constants/knowledge';
 import { IChunkListResult, useSelectChunkList } from '@/hooks/chunk-hooks';
 import { useTranslate } from '@/hooks/common-hooks';
-import { useKnowledgeBaseId } from '@/hooks/knowledge-hooks';
+import { useKnowledgeBaseId } from '@/hooks/use-knowledge-request';
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,

@@ -47,6 +47,7 @@ const styles = {
 };
 
 const getChunkIndex = (match: string) => Number(match);
+const katexOptions = { strict: 'ignore', throwOnError: false } as const;
 
 // TODO: The display of the table is inconsistent with the display previously placed in the MessageItem.
 const MarkdownContent = ({
@@ -236,8 +237,12 @@ const MarkdownContent = ({
 
   return (
     <Markdown
-      rehypePlugins={[rehypeWrapReference, rehypeKatex, rehypeRaw]}
-      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[
+        rehypeWrapReference,
+        [rehypeKatex, katexOptions],
+        rehypeRaw,
+      ]}
+      remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
       className="[&>section.think]:pl-[10px] [&>section.think]:text-[#8b8b8b] [&>section.think]:border-l-2 [&>section.think]:border-l-[#d5d3d3] [&>section.think]:mb-[10px] [&>section.think]:text-xs [&>blockquote]:pl-[10px] [&>blockquote]:border-l-4 [&>blockquote]:border-l-[#ccc] text-sm"
       components={
         {

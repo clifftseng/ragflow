@@ -167,7 +167,7 @@ def bulk_upload_documents(auth, kb_id, num, tmp_path):
 
 # CHUNK APP
 def add_chunk(auth, payload=None, *, headers=HEADERS, data=None):
-    res = requests.post(url=f"{HOST_ADDRESS}{CHUNK_API_URL}/create", headers=headers, auth=auth, json=payload, data=data)
+    res = requests.post(url=f"{HOST_ADDRESS}{CHUNK_API_URL}/create", headers=headers, auth=auth, json=payload, data=data, timeout=10)
     return res.json()
 
 

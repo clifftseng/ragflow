@@ -202,25 +202,34 @@ export const useFetchSearchDetail = (tenantId?: string) => {
 
   const [searchParams] = useSearchParams();
   const shared_id = searchParams.get('shared_id');
-  const searchId = id || shared_id;
+  const auth = searchParams.get('auth');
+  const token = searchParams.get('token');
+  const useShared = !!shared_id || !!auth;
+  const useKmToken = !!token;
+  const searchId = shared_id || id;
   let param: { search_id: string | null; tenant_id?: string } = {
     search_id: searchId,
   };
-  if (shared_id) {
+  if (shared_id && tenantId) {
     param = {
       search_id: searchId,
       tenant_id: tenantId,
     };
   }
-  const fetchSearchDetailFunc = shared_id
+  const fetchSearchDetailFunc = useShared
     ? searchService.getSearchDetailShare
     : searchService.getSearchDetail;
 
   const { data, isLoading, isError } = useQuery<SearchDetailResponse, Error>({
     queryKey: ['searchDetail', searchId],
-    enabled: !shared_id || !!tenantId,
+    enabled: Boolean(searchId),
     queryFn: async () => {
-      const { data: response } = await fetchSearchDetailFunc(param);
+      const { data: response } = useKmToken
+        ? await searchServiceNext.kmSearchDetail(
+            { params: { ...param, token } },
+            true,
+          )
+        : await fetchSearchDetailFunc(param);
       if (response.code !== 0) {
         throw new Error(response.message || 'Failed to fetch search detail');
       }

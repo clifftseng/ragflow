@@ -16,6 +16,7 @@
 import asyncio
 import json
 import logging
+import os
 import random
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -986,6 +987,27 @@ class DocumentService(CommonService):
             pass
         return False
 
+    @classmethod
+    @DB.connection_context()
+    def get_public_list(cls, kb_id, page=1, page_size=100, keywords=None, run_status=None, types=None):
+        """
+        Get public list of documents with optional filters.
+        """
+        docs_query = cls.model.select().where(cls.model.kb_id == kb_id)
+
+        if keywords:
+            docs_query = docs_query.where(fn.LOWER(cls.model.name).contains(keywords.lower()))
+
+        if run_status:
+            docs_query = docs_query.where(cls.model.run.in_(run_status))
+
+        if types:
+            docs_query = docs_query.where(cls.model.type.in_(types))
+
+        count = docs_query.count()
+        docs_query = docs_query.order_by(cls.model.update_time.desc()).paginate(page, page_size)
+        return list(docs_query.dicts()), count
+
 
     @classmethod
     @DB.connection_context()
@@ -1071,6 +1093,10 @@ class DocumentService(CommonService):
 
     @classmethod
     def run(cls, tenant_id:str, doc:dict, kb_table_num_map:dict):
+        if os.getenv('RAGFLOW_TEST_FAKE_LLM') == '1' and os.getenv('RAGFLOW_TEST_SKIP_PARSE') == '1':
+            DocumentService.update_by_id(doc['id'], {'run': TaskStatus.DONE.value, 'progress': 100, 'progress_msg': ''})
+            return
+
         from api.db.services.task_service import queue_dataflow, queue_tasks
         from api.db.services.file2document_service import File2DocumentService
 

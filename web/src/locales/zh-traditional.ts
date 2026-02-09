@@ -414,7 +414,7 @@ export default {
       chat: '聊天',
       newChat: '新建聊天',
       send: '發送',
-      sendPlaceholder: '給助理發送消息...',
+      sendPlaceholder: '給助理髮送消息...',
       chatConfiguration: '聊天配置',
       chatConfigurationDescription: '為你的知識庫配置專屬聊天助手！💕',
       assistantName: '助理姓名',

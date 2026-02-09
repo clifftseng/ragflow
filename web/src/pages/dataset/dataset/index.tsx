@@ -28,6 +28,7 @@ import { useBulkOperateDataset } from './use-bulk-operate-dataset';
 import { useCreateEmptyDocument } from './use-create-empty-document';
 import { useSelectDatasetFilters } from './use-select-filters';
 import { useHandleUploadDocument } from './use-upload-document';
+import { kmGetToken } from '@/services/knowledge-service';
 
 export default function Dataset() {
   const { t } = useTranslation();
@@ -89,6 +90,17 @@ export default function Dataset() {
     rowSelection,
     setRowSelection,
   });
+
+  const handleOpenTokenUrl = async () => {
+    if (!dataSetData?.id || typeof window === 'undefined') return;
+    const { data } = await kmGetToken(dataSetData.id);
+    const token = data?.data?.token;
+    if (!token) return;
+    const url = `${window.location.origin}/km/${dataSetData.id}/dataset?token=${encodeURIComponent(
+      token,
+    )}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
   return (
     <>
       <div className="absolute top-4 right-5">
@@ -110,6 +122,31 @@ export default function Dataset() {
               <div className="text-text-secondary text-sm">
                 {t('knowledgeDetails.datasetDescription')}
               </div>
+              {dataSetData?.id && typeof window !== 'undefined' && (
+                <div className="mt-2 text-xs text-text-secondary">
+                  <div>KM Public URL (no token):</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      className="h-8 text-xs px-2 w-[420px] bg-transparent border border-border-button rounded"
+                      readOnly
+                      value={`${window.location.origin}/km/${dataSetData.id}/dataset`}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const url = `${window.location.origin}/km/${dataSetData.id}/dataset`;
+                        navigator.clipboard?.writeText(url);
+                      }}
+                    >
+                      Copy
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleOpenTokenUrl}>
+                      Token
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           }
           preChildren={

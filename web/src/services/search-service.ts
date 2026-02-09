@@ -12,6 +12,9 @@ const {
   mindmapShare,
   getRelatedQuestionsShare,
   getSearchDetailShare,
+  kmSearchDetail,
+  kmSearchRelatedQuestions,
+  kmSearchMindmap,
 } = api;
 const methods = {
   createSearch: {
@@ -47,6 +50,18 @@ const methods = {
   getSearchDetailShare: {
     url: getSearchDetailShare,
     method: 'get',
+  },
+  kmSearchDetail: {
+    url: kmSearchDetail,
+    method: 'get',
+  },
+  kmSearchRelatedQuestions: {
+    url: kmSearchRelatedQuestions,
+    method: 'post',
+  },
+  kmSearchMindmap: {
+    url: kmSearchMindmap,
+    method: 'post',
   },
 } as const;
 const searchService = registerServer<keyof typeof methods>(methods, request);

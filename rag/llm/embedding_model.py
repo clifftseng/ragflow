@@ -71,6 +71,15 @@ class BuiltinEmbed(Base):
         self._max_tokens = BuiltinEmbed._max_tokens
 
     def encode(self, texts: list):
+        if self._model is None and os.getenv("RAGFLOW_TEST_FAKE_LLM") == "1":
+            if any(t == "" for t in texts):
+                raise Exception('Error: 413 - {"error":"Input validation error: `inputs` cannot be empty","error_type":"Validation"}')
+            dims = 512
+            emb = np.zeros((len(texts), dims), dtype=float)
+            for i, t in enumerate(texts):
+                emb[i, 0] = float(len(t))
+            return emb, 0
+
         batch_size = 16
         # TEI is able to auto truncate inputs according to https://github.com/huggingface/text-embeddings-inference.
         token_count = 0
@@ -85,6 +94,12 @@ class BuiltinEmbed(Base):
         return ress, token_count
 
     def encode_queries(self, text: str):
+        if self._model is None and os.getenv("RAGFLOW_TEST_FAKE_LLM") == "1":
+            if text == "":
+                raise Exception('Error: 413 - {"error":"Input validation error: `inputs` cannot be empty","error_type":"Validation"}')
+            vec = np.zeros((512,), dtype=float)
+            vec[0] = float(len(text)) or 1.0
+            return vec, 0
         return self._model.encode_queries(text)
 
 

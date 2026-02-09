@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTranslate } from '@/hooks/common-hooks';
-import { useSelectParserList } from '@/hooks/user-setting-hooks';
+import { useSelectParserList } from './hooks';
 import { Col, Divider, Empty, Row, Typography } from 'antd';
 import DOMPurify from 'dompurify';
 import camelCase from 'lodash/camelCase';

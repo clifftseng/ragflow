@@ -16,6 +16,8 @@ import { preprocessLaTeX } from '@/utils/chat';
 import { useIsDarkTheme } from '../theme-provider';
 import styles from './index.less';
 
+const katexOptions = { strict: 'ignore', throwOnError: false } as const;
+
 const HighLightMarkdown = ({
   children,
 }: {
@@ -26,7 +28,7 @@ const HighLightMarkdown = ({
   return (
     <Markdown
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeRaw, rehypeKatex]}
+      rehypePlugins={[rehypeRaw, [rehypeKatex, katexOptions]]}
       className={classNames(styles.text)}
       components={
         {

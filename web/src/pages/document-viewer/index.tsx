@@ -1,12 +1,18 @@
 import { Images } from '@/constants/common';
 import { api_host } from '@/utils/api';
 import { useParams, useSearchParams } from 'umi';
+// import Docx from './docx';
+// import Excel from './excel';
+// import Image from './image';
+// import Md from './md';
+// import Pdf from './pdf';
+// import Text from './text';
+
 import { DocPreviewer } from '@/components/document-preview/doc-preview';
 import { ExcelCsvPreviewer } from '@/components/document-preview/excel-preview';
 import { ImagePreviewer } from '@/components/document-preview/image-preview';
 import Md from '@/components/document-preview/md';
 import PdfPreview from '@/components/document-preview/pdf-preview';
-import { PptPreviewer } from '@/components/document-preview/ppt-preview';
 import { TxtPreviewer } from '@/components/document-preview/txt-preview';
 import { previewHtmlFile } from '@/utils/file-util';
 // import styles from './index.less';
@@ -46,11 +52,7 @@ const DocumentViewer = () => {
         <ExcelCsvPreviewer url={api}></ExcelCsvPreviewer>
       )}
 
-<<<<<<< HEAD
       {ext === 'docx' && <DocPreviewer url={api}></DocPreviewer>}
-      {(ext === 'pptx' || ext === 'ppt') && (
-        <PptPreviewer url={api}></PptPreviewer>
-      )}
     </section>
   );
 };

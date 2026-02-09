@@ -1254,6 +1254,8 @@ class LiteLLMBase(ABC):
         return gen_conf
 
     async def async_chat(self, system, history, gen_conf, **kwargs):
+        if os.getenv('RAGFLOW_TEST_FAKE_LLM') == '1':
+            return 'TEST_RESPONSE', 0
         hist = list(history) if history else []
         if system:
             if not hist or hist[0].get("role") != "system":
@@ -1288,6 +1290,10 @@ class LiteLLMBase(ABC):
         assert False, "Shouldn't be here."
 
     async def async_chat_streamly(self, system, history, gen_conf, **kwargs):
+        if os.getenv('RAGFLOW_TEST_FAKE_LLM') == '1':
+            yield 'TEST_RESPONSE'
+            yield 0
+            return
         if system and history and history[0].get("role") != "system":
             history.insert(0, {"role": "system", "content": system})
         logging.info("[HISTORY STREAMLY]" + json.dumps(history, ensure_ascii=False, indent=4))

@@ -14,9 +14,9 @@ import { ResponsePostType } from '@/interfaces/database/base';
 import { IAnswer } from '@/interfaces/database/chat';
 import { ITestingResult } from '@/interfaces/database/knowledge';
 import { IAskRequestBody } from '@/interfaces/request/chat';
-import kbService from '@/services/knowledge-service';
+import kbService, { kbServiceNext } from '@/services/knowledge-service';
 import chatService from '@/services/next-chat-service';
-import searchService from '@/services/search-service';
+import searchService, { searchServiceNext } from '@/services/search-service';
 import api from '@/utils/api';
 import { useMutation } from '@tanstack/react-query';
 import { has, isEmpty, isEqual, trim } from 'lodash';
@@ -54,6 +54,8 @@ export const useGetSharedSearchParams = () => {
   return {
     from: searchParams.get('from') as SharedFrom,
     sharedId: searchParams.get('shared_id'),
+    auth: searchParams.get('auth'),
+    token: searchParams.get('token'),
     locale: searchParams.get('locale'),
     tenantId: searchParams.get('tenantId'),
     data: data,
@@ -64,11 +66,9 @@ export const useGetSharedSearchParams = () => {
 };
 
 export const useSearchFetchMindMap = () => {
-  const [searchParams] = useSearchParams();
-  const sharedId = searchParams.get('shared_id');
-  const fetchMindMapFunc = sharedId
-    ? searchService.mindmapShare
-    : chatService.getMindMap;
+  const { sharedId, auth, token } = useGetSharedSearchParams();
+  const useShared = !!sharedId || !!auth;
+  const useKmToken = !!token;
   const {
     data,
     isPending: loading,
@@ -78,7 +78,14 @@ export const useSearchFetchMindMap = () => {
     gcTime: 0,
     mutationFn: async (params: IAskRequestBody) => {
       try {
-        const ret = await fetchMindMapFunc(params);
+        const ret = useKmToken
+          ? await searchServiceNext.kmSearchMindmap(
+              { params: { token }, data: params },
+              true,
+            )
+          : await (useShared
+              ? searchService.mindmapShare(params)
+              : chatService.getMindMap(params));
         return ret?.data?.data ?? {};
       } catch (error: any) {
         if (has(error, 'message')) {
@@ -108,7 +115,11 @@ export const useShowMindMapDrawer = (
   } = useSearchFetchMindMap();
 
   const handleShowModal = useCallback(() => {
-    const searchParams = { question: trim(question), kb_ids: kbIds, searchId };
+    const searchParams = {
+      question: trim(question),
+      kb_ids: kbIds,
+      search_id: searchId,
+    };
     if (
       !isEmpty(searchParams.question) &&
       !isEqual(searchParams, ref.current)
@@ -135,11 +146,9 @@ export const useTestChunkRetrieval = (
 } => {
   const knowledgeBaseId = useKnowledgeBaseId();
   const { page, size: pageSize } = useSetPaginationParams();
-  const [searchParams] = useSearchParams();
-  const shared_id = searchParams.get('shared_id');
-  const retrievalTestFunc = shared_id
-    ? kbService.retrievalTestShare
-    : kbService.retrieval_test;
+  const { sharedId, auth, token } = useGetSharedSearchParams();
+  const useShared = !!sharedId || !!auth;
+  const useKmToken = !!token;
   const {
     data,
     isPending: loading,
@@ -148,13 +157,21 @@ export const useTestChunkRetrieval = (
     mutationKey: ['testChunk'], // This method is invalid
     gcTime: 0,
     mutationFn: async (values: any) => {
-      const { data } = await retrievalTestFunc({
+      const payload = {
         ...values,
         kb_id: values.kb_id ?? knowledgeBaseId,
         page,
         size: pageSize,
         tenant_id: tenantId,
-      });
+      };
+      const { data } = useKmToken
+        ? await kbServiceNext.kmSearchRetrievalTest(
+            { params: { token }, data: payload },
+            true,
+          )
+        : await (useShared
+            ? kbService.retrievalTestShare(payload)
+            : kbService.retrieval_test(payload));
       if (data.code === 0) {
         const res = data.data;
         return {
@@ -186,11 +203,9 @@ export const useTestChunkAllRetrieval = (
 } => {
   const knowledgeBaseId = useKnowledgeBaseId();
   const { page, size: pageSize } = useSetPaginationParams();
-  const [searchParams] = useSearchParams();
-  const shared_id = searchParams.get('shared_id');
-  const retrievalTestFunc = shared_id
-    ? kbService.retrievalTestShare
-    : kbService.retrieval_test;
+  const { sharedId, auth, token } = useGetSharedSearchParams();
+  const useShared = !!sharedId || !!auth;
+  const useKmToken = !!token;
   const {
     data,
     isPending: loading,
@@ -199,14 +214,22 @@ export const useTestChunkAllRetrieval = (
     mutationKey: ['testChunkAll'], // This method is invalid
     gcTime: 0,
     mutationFn: async (values: any) => {
-      const { data } = await retrievalTestFunc({
+      const payload = {
         ...values,
         kb_id: values.kb_id ?? knowledgeBaseId,
         doc_ids: [],
         page,
         size: pageSize,
         tenant_id: tenantId,
-      });
+      };
+      const { data } = useKmToken
+        ? await kbServiceNext.kmSearchRetrievalTest(
+            { params: { token }, data: payload },
+            true,
+          )
+        : await (useShared
+            ? kbService.retrievalTestShare(payload)
+            : kbService.retrieval_test(payload));
       if (data.code === 0) {
         const res = data.data;
         return {
@@ -276,11 +299,9 @@ export const useFetchRelatedQuestions = (
   tenantId?: string,
   searchId?: string,
 ) => {
-  const [searchParams] = useSearchParams();
-  const shared_id = searchParams.get('shared_id');
-  const retrievalTestFunc = shared_id
-    ? searchService.getRelatedQuestionsShare
-    : chatService.getRelatedQuestions;
+  const { sharedId, auth, token } = useGetSharedSearchParams();
+  const useShared = !!sharedId || !!auth;
+  const useKmToken = !!token;
   const {
     data,
     isPending: loading,
@@ -289,11 +310,15 @@ export const useFetchRelatedQuestions = (
     mutationKey: ['fetchRelatedQuestions'],
     gcTime: 0,
     mutationFn: async (question: string): Promise<string[]> => {
-      const { data } = await retrievalTestFunc({
-        question,
-        tenant_id: tenantId,
-        search_id: searchId,
-      });
+      const payload = { question, tenant_id: tenantId, search_id: searchId };
+      const { data } = useKmToken
+        ? await searchServiceNext.kmSearchRelatedQuestions(
+            { params: { token }, data: payload },
+            true,
+          )
+        : await (useShared
+            ? searchService.getRelatedQuestionsShare(payload)
+            : chatService.getRelatedQuestions(payload));
 
       return data?.data ?? [];
     },
@@ -308,9 +333,15 @@ export const useSendQuestion = (
   searchId: string = '',
   related_search: boolean = false,
 ) => {
-  const { sharedId } = useGetSharedSearchParams();
+  const { sharedId, auth, token } = useGetSharedSearchParams();
+  const useShared = !!sharedId || !!auth;
+  const useKmToken = !!token;
   const { send, answer, done, stopOutputMessage } = useSendMessageWithSse(
-    sharedId ? api.askShare : api.ask,
+    useKmToken
+      ? `${api.kmSearchAsk}?token=${encodeURIComponent(token ?? '')}`
+      : useShared
+        ? api.askShare
+        : api.ask,
   );
 
   const { testChunk, loading } = useTestChunkRetrieval(tenantId);

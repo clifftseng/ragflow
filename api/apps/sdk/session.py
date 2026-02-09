@@ -37,8 +37,8 @@ from common.metadata_utils import apply_meta_data_filter, convert_conditions, me
 from api.db.services.search_service import SearchService
 from api.db.services.user_service import UserTenantService
 from common.misc_utils import get_uuid
-from api.utils.api_utils import check_duplicate_ids, get_data_openai, get_error_data_result, get_json_result, get_result, get_request_json, server_error_response, token_required, validate_request, verify_url_token
-from graphrag.general.mind_map_extractor import MindMapExtractor
+from api.utils.api_utils import check_duplicate_ids, get_data_openai, get_error_data_result, get_json_result, \
+    get_result, get_request_json, server_error_response, token_required, validate_request
 from rag.app.tag import label_question
 from rag.prompts.template import load_prompt
 from rag.prompts.generator import cross_languages, keyword_extraction, chunks_format
@@ -900,38 +900,11 @@ Related search terms:
 async def chatbot_completions(dialog_id):
     req = await get_request_json()
 
-    # 1) 把 body 裡的 data 物件（前端從 URL data_* 收集）攤平成同層參數
-    data_in_body = req.pop("data", None)
-    if isinstance(data_in_body, dict):
-        req.update(data_in_body)
-
-    # 2) 也支援直接從 URL 讀取 data_* 參數（以防前端沒帶到 body）
-    qs_data = {k[len("data_"):]: v for k, v in request.args.items() if k.startswith("data_")}
-    if qs_data:
-        req.update(qs_data)
-
-    # 3) 正規化幾種常見名稱 → 統一成 req["token"]
-
-
-    url_token = req.get("token")
-    if url_token:
-        if not verify_url_token(url_token):
-            return get_error_data_result(message='Token is invalid!"')
-    # else:
-    #     logging.warning("AK03_no token detected")
-
-
-
-    # 若需要驗證簽章，可在這裡加上：
-    # if not verify_url_token(token): 
-    #     return get_error_data_result("Invalid token")
-
-    # 其餘程式碼保持不變 ↓ （Authorization 檢查 + iframe_completion）
-    token_hdr = request.headers.get("Authorization").split()
-    if len(token_hdr) != 2:
+    token = request.headers.get("Authorization").split()
+    if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
-    beta = token_hdr[1]
-    objs = APIToken.query(beta=beta)
+    token = token[1]
+    objs = APIToken.query(beta=token)
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 

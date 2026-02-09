@@ -26,17 +26,17 @@ export function SideBar({ refreshCount }: PropType) {
       {
         icon: Database,
         label: t(`knowledgeDetails.dataset`),
-        key: Routes.DatasetBase,
+        key: '/dataset',
       },
       {
         icon: FileSearch2,
         label: t(`knowledgeDetails.testing`),
-        key: Routes.DatasetTesting,
+        key: '/testing',
       },
       {
         icon: Banknote,
         label: t(`knowledgeDetails.configuration`),
-        key: Routes.DatasetSetting,
+        key: '/setting',
       },
     ];
   }, [t]);

@@ -6,7 +6,7 @@ import {
 } from '@/interfaces/request/knowledge';
 import { ProcessingType } from '@/pages/dataset/dataset-overview/dataset-common';
 import api from '@/utils/api';
-import registerServer from '@/utils/register-server';
+import registerServer, { registerNextServer } from '@/utils/register-server';
 import request, { post } from '@/utils/request';
 
 const {
@@ -20,7 +20,7 @@ const {
   document_rm,
   document_delete,
   document_create,
-  km_document_create, // 【【【導入新路由】】】
+  km_document_create,
   document_change_parser,
   document_thumbnails,
   chunk_list,
@@ -45,13 +45,18 @@ const {
   km_document_change_parser,
   km_document_set_meta,
   km_document_thumbnails,
+  km_token,
   km_chunk_list,
   km_chunk_set,
   km_chunk_rm,
   km_chunk_switch,
   km_chunk_create,
+  km_update_kb,
+  km_retrieval_test,
+  km_list_tags,
   getMeta,
   retrievalTestShare,
+  kmSearchRetrievalTest,
   getKnowledgeBasicInfo,
   fetchDataPipelineLog,
   fetchPipelineDatasetLogs,
@@ -106,7 +111,6 @@ const methods = {
     url: document_create,
     method: 'post',
   },
-
   km_document_create: { url: km_document_create, method: 'post' },
   km_document_rm: { url: km_document_rm, method: 'post' },
   km_document_run: { url: km_document_run, method: 'post' },
@@ -119,8 +123,10 @@ const methods = {
   km_chunk_set: { url: km_chunk_set, method: 'post' },
   km_chunk_rm: { url: km_chunk_rm, method: 'post' },
   km_chunk_switch: { url: km_chunk_switch, method: 'post' },
-  km_chunk_create: { url: km_chunk_create, method: 'post' },   
-
+  km_chunk_create: { url: km_chunk_create, method: 'post' },
+  km_update_kb: { url: km_update_kb, method: 'post' },
+  km_retrieval_test: { url: km_retrieval_test, method: 'post' },
+  km_list_tags: { url: km_list_tags, method: 'get' },
   document_run: {
     url: document_run,
     method: 'post',
@@ -202,6 +208,10 @@ const methods = {
     url: retrievalTestShare,
     method: 'post',
   },
+  kmSearchRetrievalTest: {
+    url: kmSearchRetrievalTest,
+    method: 'post',
+  },
   getKnowledgeBasicInfo: {
     url: getKnowledgeBasicInfo,
     method: 'get',
@@ -259,14 +269,31 @@ const methods = {
 };
 
 const kbService = registerServer<keyof typeof methods>(methods, request);
+export const kbServiceNext =
+  registerNextServer<keyof typeof methods>(methods);
 
 export const uploadPublicDocument = (kb_id: string, data: FormData) => {
-  // 直接從 api 物件呼叫函式來取得完整、正確的 URL
   const url = api.km_document_upload(kb_id);
   return request.post<any>(url, {
     data,
   });
 };
+
+export const kmListTagsByKnowledgeId = (kb_id: string) =>
+  request.get(api.km_list_tags_by_kb(kb_id));
+
+export const kmGetToken = (kb_id: string) => request.get(km_token(kb_id));
+
+export const kmListTagsByKnowledgeIds = (kb_ids: string[]) =>
+  request.get(api.km_list_tags, { params: { kb_ids: kb_ids.join(',') } });
+
+export const kmRemoveTag = (kb_id: string, tags: string[]) =>
+  post(api.km_rm_tags(kb_id), { tags });
+
+export const kmRenameTag = (
+  kb_id: string,
+  { fromTag, toTag }: IRenameTag,
+) => post(api.km_rename_tag(kb_id), { fromTag, toTag });
 
 export const listTag = (knowledgeId: string) =>
   request.get(api.listTag(knowledgeId));

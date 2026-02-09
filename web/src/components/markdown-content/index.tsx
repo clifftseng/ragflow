@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 
 import 'katex/dist/katex.min.css'; // `rehype-katex` does not import the CSS for you
 
+const katexOptions = { strict: 'ignore', throwOnError: false } as const;
+
 import { useFetchDocumentThumbnailsByIds } from '@/hooks/use-document-request';
 import {
   currentReg,
@@ -231,7 +233,11 @@ const MarkdownContent = ({
 
   return (
     <Markdown
-      rehypePlugins={[rehypeWrapReference, rehypeKatex, rehypeRaw]}
+      rehypePlugins={[
+        rehypeWrapReference,
+        [rehypeKatex, katexOptions],
+        rehypeRaw,
+      ]}
       remarkPlugins={[remarkGfm, remarkMath]}
       className={styles.markdownContentWrapper}
       components={
