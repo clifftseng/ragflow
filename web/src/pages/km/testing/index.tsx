@@ -1,4 +1,4 @@
-import { useTestRetrieval } from '@/hooks/use-knowledge-request';
+import { useKmTestRetrieval } from './hooks';
 import { useCallback, useState } from 'react';
 import { TopTitle } from '../dataset-title';
 import TestingForm from './testing-form';
@@ -19,7 +19,7 @@ export default function RetrievalTesting() {
     pageSize,
     handleFilterSubmit,
     filterValue,
-  } = useTestRetrieval();
+  } = useKmTestRetrieval();
 
   const [count, setCount] = useState(1);
 

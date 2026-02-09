@@ -1,10 +1,30 @@
 import EditTag from '@/components/edit-tag';
-import { useFetchChunk } from '@/hooks/chunk-hooks';
+import { FileUploader } from '@/components/file-uploader';
+import Image from '@/components/image';
+import Divider from '@/components/ui/divider';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal/modal';
+import Space from '@/components/ui/space';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useFetchChunk } from '@/hooks/use-chunk-request';
 import { IModalProps } from '@/interfaces/common';
-import { IChunk } from '@/interfaces/database/knowledge';
-import { DeleteOutlined } from '@ant-design/icons';
-import { Divider, Form, Input, Modal, Space, Switch } from 'antd';
+import type { ChunkDocType } from '@/interfaces/database/knowledge';
 import React, { useCallback, useEffect, useState } from 'react';
+import { FieldValues, FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useDeleteChunkByIds } from '../../hooks';
 import {
@@ -13,15 +33,25 @@ import {
 } from '../../utils';
 import { TagFeatureItem } from './tag-feature-item';
 
-type FieldType = Pick<
-  IChunk,
-  'content_with_weight' | 'tag_kwd' | 'question_kwd' | 'important_kwd'
->;
-
 interface kFProps {
   doc_id: string;
   chunkId: string | undefined;
   parserId: string;
+}
+
+async function fileToBase64(file: File) {
+  if (!file) {
+    return;
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const fr = new FileReader();
+    fr.addEventListener('load', () => {
+      resolve((fr.result?.toString() ?? '').replace(/^.*,/, ''));
+    });
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
 }
 
 const ChunkCreatingModal: React.FC<IModalProps<any> & kFProps> = ({
@@ -32,28 +62,42 @@ const ChunkCreatingModal: React.FC<IModalProps<any> & kFProps> = ({
   loading,
   parserId,
 }) => {
-  const [form] = Form.useForm();
+  // const [form] = Form.useForm();
+  // const form = useFormContext();
+  const form = useForm<FieldValues>({
+    defaultValues: {
+      content_with_weight: '',
+      tag_kwd: [],
+      question_kwd: [],
+      important_kwd: [],
+      tag_feas: [],
+      image: [],
+    },
+  });
   const [checked, setChecked] = useState(false);
   const { removeChunk } = useDeleteChunkByIds();
   const { data } = useFetchChunk(chunkId);
   const { t } = useTranslation();
+  const isEditMode = !!chunkId;
 
   const isTagParser = parserId === 'tag';
-
-  const handleOk = useCallback(async () => {
-    try {
-      const values = await form.validateFields();
-      console.log('🚀 ~ handleOk ~ values:', values);
-
-      onOk?.({
+  const onSubmit = useCallback(
+    async (values: FieldValues) => {
+      const prunedValues = {
         ...values,
+        image_base64: await fileToBase64(values.image?.[0] as File),
         tag_feas: transformTagFeaturesArrayToObject(values.tag_feas),
-        available_int: checked ? 1 : 0, // available_int
-      });
-    } catch (errorInfo) {
-      console.log('Failed:', errorInfo);
-    }
-  }, [checked, form, onOk]);
+        available_int: checked ? 1 : 0,
+      } as FieldValues;
+
+      Reflect.deleteProperty(prunedValues, 'image');
+
+      onOk?.(prunedValues);
+    },
+    [checked, onOk],
+  );
+
+  const handleOk = form.handleSubmit(onSubmit);
 
   const handleRemove = useCallback(() => {
     if (chunkId) {
@@ -68,8 +112,9 @@ const ChunkCreatingModal: React.FC<IModalProps<any> & kFProps> = ({
   useEffect(() => {
     if (data?.code === 0) {
       const { available_int, tag_feas } = data.data;
-      form.setFieldsValue({
-        ...(data.data || {}),
+
+      form.reset({
+        ...data.data,
         tag_feas: transformTagFeaturesObjectToArray(tag_feas),
       });
 
@@ -83,54 +128,169 @@ const ChunkCreatingModal: React.FC<IModalProps<any> & kFProps> = ({
       open={true}
       onOk={handleOk}
       onCancel={hideModal}
-      okButtonProps={{ loading }}
+      confirmLoading={loading}
       destroyOnClose
     >
-      <Form form={form} autoComplete="off" layout={'vertical'}>
-        <Form.Item<FieldType>
-          label={t('chunk.chunk')}
-          name="content_with_weight"
-          rules={[{ required: true, message: t('chunk.chunkMessage') }]}
-        >
-          <Input.TextArea autoSize={{ minRows: 4, maxRows: 10 }} />
-        </Form.Item>
+      <Form {...form}>
+        <div className="flex flex-col gap-4">
+          <FormField
+            control={form.control}
+            name="content_with_weight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('chunk.chunk')}</FormLabel>
+                <FormControl>
+                  <Textarea {...field} autoSize={{ minRows: 4, maxRows: 10 }} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <Form.Item<FieldType> label={t('chunk.keyword')} name="important_kwd">
-          <EditTag></EditTag>
-        </Form.Item>
-        <Form.Item<FieldType>
-          label={t('chunk.question')}
-          name="question_kwd"
-          tooltip={t('chunk.questionTip')}
-        >
-          <EditTag></EditTag>
-        </Form.Item>
-        {isTagParser && (
-          <Form.Item<FieldType>
-            label={t('knowledgeConfiguration.tagName')}
-            name="tag_kwd"
-          >
-            <EditTag></EditTag>
-          </Form.Item>
-        )}
+          {/* Do not display the type field in create mode */}
+          {isEditMode && (
+            <FormField
+              control={form.control}
+              name="doc_type_kwd"
+              render={({ field }) => {
+                const chunkType =
+                  ((field.value &&
+                    String(field.value)?.toLowerCase()) as ChunkDocType) ||
+                  'text';
 
-        {!isTagParser && <TagFeatureItem></TagFeatureItem>}
+                return (
+                  <FormItem>
+                    <FormLabel>{t(`chunk.type`)}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        value={t(`chunk.docType.${chunkType}`)}
+                        readOnly
+                      />
+                    </FormControl>
+                  </FormItem>
+                );
+              }}
+            />
+          )}
+
+          {isEditMode && form.getValues('doc_type_kwd') === 'image' && (
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="gap-1">{t('chunk.image')}</FormLabel>
+
+                  <div className="space-y-4">
+                    {data?.data?.img_id && (
+                      <Image
+                        id={data?.data?.img_id}
+                        className="mx-auto w-auto max-w-full object-contain max-h-[800px]"
+                      />
+                    )}
+
+                    <div className="col-start-2 col-end-3 only:col-span-2">
+                      <FormControl>
+                        <FileUploader
+                          className="h-auto p-6"
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          accept={{
+                            'image/png': [],
+                            'image/jpeg': [],
+                            'image/webp': [],
+                          }}
+                          maxFileCount={1}
+                          hideDropzoneOnMaxFileCount
+                          title={t('chunk.imageUploaderTitle')}
+                          description={<></>}
+                        />
+                      </FormControl>
+                    </div>
+                  </div>
+                </FormItem>
+              )}
+            />
+          )}
+
+          <FormField
+            control={form.control}
+            name="important_kwd"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('chunk.keyword')}</FormLabel>
+                <FormControl>
+                  <EditTag {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="question_kwd"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex justify-start items-start">
+                  <div className="flex items-center gap-1">
+                    <span>{t('chunk.question')}</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <span className="text-xs mt-[0px] text-center scale-[90%] text-text-secondary cursor-pointer rounded-full w-[17px] h-[17px] border-text-secondary border-2">
+                          ?
+                        </span>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80" side="top">
+                        {t('chunk.questionTip')}
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <EditTag {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {isTagParser && (
+            <FormField
+              control={form.control}
+              name="tag_kwd"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('knowledgeConfiguration.tagName')}</FormLabel>
+                  <FormControl>
+                    <EditTag {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {!isTagParser && (
+            <FormProvider {...form}>
+              <TagFeatureItem />
+            </FormProvider>
+          )}
+        </div>
       </Form>
 
       {chunkId && (
         <section>
-          <Divider></Divider>
+          <Divider />
           <Space size={'large'}>
-            <Switch
-              checkedChildren={t('chunk.enabled')}
-              unCheckedChildren={t('chunk.disabled')}
-              onChange={handleCheck}
-              checked={checked}
-            />
-
-            <span onClick={handleRemove}>
-              <DeleteOutlined /> {t('common.delete')}
-            </span>
+            <div className="flex items-center gap-2">
+              {t('chunk.enabled')}
+              <Switch checked={checked} onCheckedChange={handleCheck} />
+            </div>
+            {/* <div className="flex items-center gap-1" onClick={handleRemove}>
+              <Trash2 size={16} /> {t('common.delete')}
+            </div> */}
           </Space>
         </section>
       )}

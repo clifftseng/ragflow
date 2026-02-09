@@ -336,9 +336,18 @@ export default {
       apiKeyTip:
         'La clave API puede obtenerse registrándose con el proveedor correspondiente de LLM.',
       showMoreModels: 'Mostrar más modelos',
+      hideModels: 'Ocultar modelos',
       baseUrl: 'URL base',
       baseUrlTip:
         'Si tu clave API es de OpenAI, ignora esto. Cualquier otro proveedor intermedio proporcionará esta URL base junto con la clave API.',
+      tongyiBaseUrlTip:
+        'Para usuarios chinos, no es necesario rellenar o usar https://dashscope.aliyuncs.com/compatible-mode/v1. Para usuarios internacionales, usar https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      tongyiBaseUrlPlaceholder:
+        '(Solo para usuarios internacionales, por favor ver consejo)',
+      minimaxBaseUrlTip:
+        'Solo usuarios internacionales: utilice https://api.minimax.io/v1.',
+      minimaxBaseUrlPlaceholder:
+        '(Solo usuarios internacionales, ingrese https://api.minimax.io/v1)',
       modify: 'Modificar',
       systemModelSettings: 'Establecer modelos predeterminados',
       chatModel: 'Modelo de chat',
@@ -432,7 +441,7 @@ export default {
       addGoogleRegion: 'Región de Google Cloud',
       GoogleRegionMessage: '¡Por favor ingresa la Región de Google Cloud!',
       modelProvidersWarn:
-        'Por favor agrega tanto el modelo de embeddings como el LLM en <b>Configuración > Proveedores de Modelos</b> primero.',
+        'Por favor agrega tanto el modelo de embeddings como el LLM en <b>Configuración > Proveedores de Modelos</b> primero. Luego, configúralos en "Establecer modelos predeterminados".',
       apiVersion: 'Versión de la API',
       apiVersionMessage: '¡Por favor ingresa la versión de la API!',
       modelsToBeAddedTooltip:
@@ -569,12 +578,31 @@ export default {
         'Este componente se usa para obtener resultados de búsqueda de www.baidu.com. Típicamente, actúa como un complemento a las bases de conocimiento. Top N especifica el número de resultados de búsqueda que necesitas ajustar.',
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
-        'Un componente que recupera resultados de búsqueda de duckduckgo.com, con TopN especificando el número de resultados de búsqueda. Complementa las bases de conocimiento existentes.',
-      channel: 'Canal',
-      channelTip:
-        'Realizar búsqueda de texto o búsqueda de noticias en la entrada del componente.',
-      text: 'Texto',
-      news: 'Noticias',
+        'Un componente que busca en duckduckgo.com, permitiéndote especificar el número de resultados de búsqueda usando TopN. Supplementa las bases de conocimiento existentes.',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        'Un componente que busca a través de la URL de la instancia SearXNG que proporcionas. Especifica TopN y la URL de la instancia.',
+      pdfGenerator: 'Generador de Documentos',
+      pDFGenerator: 'Generador de Documentos',
+      pdfGeneratorDescription: `Un componente que genera documentos (PDF, DOCX, TXT) desde contenido formateado en markdown con estilo personalizable, imágenes y tablas. Soporta: **negrita**, *cursiva*, # encabezados, - listas, tablas con sintaxis |.`,
+      pDFGeneratorDescription: `Un componente que genera documentos (PDF, DOCX, TXT) desde contenido formateado en markdown con estilo personalizable, imágenes y tablas. Soporta: **negrita**, *cursiva*, # encabezados, - listas, tablas con sintaxis |.`,
+      subtitle: 'Subtítulo',
+      logoImage: 'Imagen Logo',
+      logoPosition: 'Posición Logo',
+      logoWidth: 'Ancho Logo',
+      logoHeight: 'Alto Logo',
+      fontFamily: 'Familia Fuente',
+      fontSize: 'Tamaño Fuente',
+      titleFontSize: 'Tamaño Fuente Título',
+      pageSize: 'Tamaño Página',
+      orientation: 'Orientación',
+      marginTop: 'Margen Superior',
+      marginBottom: 'Margen Inferior',
+      filename: 'Nombre Archivo',
+      outputDirectory: 'Directorio Salida',
+      addPageNumbers: 'Agregar Números Página',
+      addTimestamp: 'Agregar Timestamp',
+      watermarkText: 'Texto Marca Agua',
       messageHistoryWindowSize:
         'Tamaño de la ventana del historial de mensajes',
       messageHistoryWindowSizeTip:
@@ -858,6 +886,19 @@ export default {
       noteDescription: 'Nota',
       notePlaceholder: 'Por favor ingresa una nota',
       runningHintText: 'está corriendo...🕞',
+
+      invoke: 'Solicitud HTTP',
+      invokeDescription:
+        'Un componente capaz de llamar a servicios remotos, utilizando las salidas de otros componentes o constantes como entradas.',
+      url: 'Url',
+      method: 'Método',
+      timeout: 'Tiempo de espera',
+      headers: 'Encabezados',
+      cleanHtml: 'Limpiar HTML',
+      cleanHtmlTip:
+        'Si la respuesta está formateada en HTML y solo se desea el contenido principal, actívelo.',
+      invalidUrl:
+        'Debe ser una URL válida o una URL con marcadores de posición de variables en el formato {nombre_variable} o {componente@variable}',
     },
     footer: {
       profile: 'Todos los derechos reservados @ React',

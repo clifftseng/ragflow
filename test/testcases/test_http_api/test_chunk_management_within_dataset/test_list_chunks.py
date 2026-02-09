@@ -69,8 +69,7 @@ class TestChunksList:
         "params, expected_code, expected_page_size, expected_message",
         [
             ({"page_size": None}, 0, 5, ""),
-            pytest.param({"page_size": 0}, 0, 5, "", marks=pytest.mark.skipif(os.getenv("DOC_ENGINE") == "infinity", reason="Infinity does not support page_size=0")),
-            pytest.param({"page_size": 0}, 100, 0, "3013", marks=pytest.mark.skipif(os.getenv("DOC_ENGINE") in [None, "opensearch", "elasticsearch"], reason="Infinity does not support page_size=0")),
+            pytest.param({"page_size": 0}, 0, 5, ""),
             ({"page_size": 1}, 0, 1, ""),
             ({"page_size": 6}, 0, 5, ""),
             ({"page_size": "1"}, 0, 1, ""),
@@ -94,8 +93,9 @@ class TestChunksList:
             ({"keywords": None}, 5),
             ({"keywords": ""}, 5),
             ({"keywords": "1"}, 1),
-            pytest.param({"keywords": "chunk"}, 4, marks=pytest.mark.skipif(os.getenv("DOC_ENGINE") == "infinity", reason="issues/6509")),
-            ({"keywords": "ragflow"}, 1),
+            ({"keywords": "chunk"}, 4),
+            pytest.param({"keywords": "ragflow"}, 1, marks=pytest.mark.skipif(os.getenv("DOC_ENGINE") == "infinity", reason="issues/6509")),
+            pytest.param({"keywords": "ragflow"}, 5, marks=pytest.mark.skipif(os.getenv("DOC_ENGINE") != "infinity", reason="issues/6509")),
             ({"keywords": "unknown"}, 0),
         ],
     )

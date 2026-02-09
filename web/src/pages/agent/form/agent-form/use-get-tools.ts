@@ -3,6 +3,11 @@ import { get } from 'lodash';
 import { useContext, useMemo } from 'react';
 import { AgentFormContext } from '../../context';
 
+export function useGetNodeTools() {
+  const node = useContext(AgentFormContext);
+  return get(node, 'data.form.tools', []) as IAgentForm['tools'];
+}
+
 export function useGetAgentToolNames() {
   const node = useContext(AgentFormContext);
 
@@ -12,4 +17,15 @@ export function useGetAgentToolNames() {
   }, [node]);
 
   return { toolNames };
+}
+
+export function useGetAgentMCPIds() {
+  const node = useContext(AgentFormContext);
+
+  const mcpIds = useMemo(() => {
+    const ids: IAgentForm['mcp'] = get(node, 'data.form.mcp', []);
+    return ids.map((x) => x.mcp_id);
+  }, [node]);
+
+  return { mcpIds };
 }

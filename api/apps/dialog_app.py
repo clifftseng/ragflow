@@ -14,25 +14,26 @@
 #  limitations under the License.
 #
 
-from flask import request
-from flask_login import login_required, current_user
+from quart import request
+from api.db.services import duplicate_name
 from api.db.services.dialog_service import DialogService
-from api.db import StatusEnum
-from api.db.services.llm_service import TenantLLMService
+from common.constants import StatusEnum
+from api.db.services.tenant_llm_service import TenantLLMService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.user_service import TenantService, UserTenantService
-from api import settings
-from api.utils.api_utils import server_error_response, get_data_error_result, validate_request
-from api.utils import get_uuid
-from api.utils.api_utils import get_json_result
+from api.utils.api_utils import get_data_error_result, get_json_result, get_request_json, server_error_response, validate_request
+from common.misc_utils import get_uuid
+from common.constants import RetCode
+from api.apps import login_required, current_user
 
 
 @manager.route('/set', methods=['POST'])  # noqa: F821
 @validate_request("prompt_config")
 @login_required
-def set_dialog():
-    req = request.json
-    dialog_id = req.get("dialog_id")
+async def set_dialog():
+    req = await get_request_json()
+    dialog_id = req.get("dialog_id", "")
+    is_create = not dialog_id
     name = req.get("name", "New Dialog")
     if not isinstance(name, str):
         return get_data_error_result(message="Dialog name must be string.")
@@ -40,6 +41,15 @@ def set_dialog():
         return get_data_error_result(message="Dialog name can't be empty.")
     if len(name.encode("utf-8")) > 255:
         return get_data_error_result(message=f"Dialog name length is {len(name)} which is larger than 255")
+
+    if is_create and DialogService.query(tenant_id=current_user.id, name=name.strip()):
+        name = name.strip()
+        name = duplicate_name(
+            DialogService.query,
+            name=name,
+            tenant_id=current_user.id,
+            status=StatusEnum.VALID.value)
+
     description = req.get("description", "A helpful dialog")
     icon = req.get("icon", "")
     top_n = req.get("top_n", 6)
@@ -50,10 +60,11 @@ def set_dialog():
     similarity_threshold = req.get("similarity_threshold", 0.1)
     vector_similarity_weight = req.get("vector_similarity_weight", 0.3)
     llm_setting = req.get("llm_setting", {})
+    meta_data_filter = req.get("meta_data_filter", {})
     prompt_config = req["prompt_config"]
-    
+
     if not req.get("kb_ids", []) and not prompt_config.get("tavily_api_key") and "{knowledge}" in prompt_config['system']:
-        return get_data_error_result(message="Please remove `{knowledge}` in system prompt since no knowledge base/Tavily used here.")
+        return get_data_error_result(message="Please remove `{knowledge}` in system prompt since no dataset / Tavily used here.")
 
     for p in prompt_config["parameters"]:
         if p["optional"]:
@@ -83,6 +94,7 @@ def set_dialog():
                 "llm_id": llm_id,
                 "llm_setting": llm_setting,
                 "prompt_config": prompt_config,
+                "meta_data_filter": meta_data_filter,
                 "top_n": top_n,
                 "top_k": top_k,
                 "rerank_id": rerank_id,
@@ -140,15 +152,53 @@ def get_kb_names(kb_ids):
 @login_required
 def list_dialogs():
     try:
-        diags = DialogService.query(
+        conversations = DialogService.query(
             tenant_id=current_user.id,
             status=StatusEnum.VALID.value,
             reverse=True,
             order_by=DialogService.model.create_time)
-        diags = [d.to_dict() for d in diags]
-        for d in diags:
-            d["kb_ids"], d["kb_names"] = get_kb_names(d["kb_ids"])
-        return get_json_result(data=diags)
+        conversations = [d.to_dict() for d in conversations]
+        for conversation in conversations:
+            conversation["kb_ids"], conversation["kb_names"] = get_kb_names(conversation["kb_ids"])
+        return get_json_result(data=conversations)
+    except Exception as e:
+        return server_error_response(e)
+
+
+@manager.route('/next', methods=['POST'])  # noqa: F821
+@login_required
+async def list_dialogs_next():
+    args = request.args
+    keywords = args.get("keywords", "")
+    page_number = int(args.get("page", 0))
+    items_per_page = int(args.get("page_size", 0))
+    parser_id = args.get("parser_id")
+    orderby = args.get("orderby", "create_time")
+    if args.get("desc", "true").lower() == "false":
+        desc = False
+    else:
+        desc = True
+
+    req = await get_request_json()
+    owner_ids = req.get("owner_ids", [])
+    try:
+        if not owner_ids:
+            # tenants = TenantService.get_joined_tenants_by_user_id(current_user.id)
+            # tenants = [tenant["tenant_id"] for tenant in tenants]
+            tenants = [] # keep it here
+            dialogs, total = DialogService.get_by_tenant_ids(
+                tenants, current_user.id, page_number,
+                items_per_page, orderby, desc, keywords, parser_id)
+        else:
+            tenants = owner_ids
+            dialogs, total = DialogService.get_by_tenant_ids(
+                tenants, current_user.id, 0,
+                0, orderby, desc, keywords, parser_id)
+            dialogs = [dialog for dialog in dialogs if dialog["tenant_id"] in tenants]
+            total = len(dialogs)
+            if page_number and items_per_page:
+                dialogs = dialogs[(page_number-1)*items_per_page:page_number*items_per_page]
+        return get_json_result(data={"dialogs": dialogs, "total": total})
     except Exception as e:
         return server_error_response(e)
 
@@ -156,8 +206,8 @@ def list_dialogs():
 @manager.route('/rm', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("dialog_ids")
-def rm():
-    req = request.json
+async def rm():
+    req = await get_request_json()
     dialog_list=[]
     tenants = UserTenantService.query(user_id=current_user.id)
     try:
@@ -168,7 +218,7 @@ def rm():
             else:
                 return get_json_result(
                     data=False, message='Only owner of dialog authorized for this operation.',
-                    code=settings.RetCode.OPERATING_ERROR)
+                    code=RetCode.OPERATING_ERROR)
             dialog_list.append({"id": id,"status":StatusEnum.INVALID.value})
         DialogService.update_many_by_id(dialog_list)
         return get_json_result(data=True)

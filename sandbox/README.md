@@ -24,7 +24,7 @@ A secure, pluggable code execution backend for RAGFlow and beyond.
 
 - Linux distro compatible with gVisor
 - [gVisor](https://gvisor.dev/docs/user_guide/install/)
-- Docker >= `24.0.0`
+- Docker >= `25.0` (API 1.44+) — executor manager now bundles Docker CLI `29.1.0` to match newer daemons.
 - Docker Compose >= `v2.26.1` like [RAGFlow](https://github.com/infiniflow/ragflow)
 - [uv](https://docs.astral.sh/uv/) as package and project manager
 
@@ -33,6 +33,10 @@ A secure, pluggable code execution backend for RAGFlow and beyond.
 - [GNU Make](https://www.gnu.org/software/make/) for simplified CLI management
 
 ---
+
+> ⚠️ **New Docker CLI requirement**
+>
+> If you see `client version 1.43 is too old. Minimum supported API version is 1.44`, pull the latest `infiniflow/sandbox-executor-manager:latest` (rebuilt with Docker CLI `29.1.0`) or rebuild it in `./sandbox/executor_manager`. Older images shipped Docker 24.x, which cannot talk to newer Docker daemons.
 
 ### 🐳 Build Docker Base Images
 
@@ -117,7 +121,7 @@ make logs                                 # With Make
 ### 🧰 Makefile Toolbox
 
 | Command           | Description                                      |
-| ----------------- | ------------------------------------------------ |
+|-------------------|--------------------------------------------------|
 | `make`            | Setup, build, launch and test all at once        |
 | `make setup`      | Initialize environment and install uv            |
 | `make ensure_env` | Auto-create `.env` if missing                    |
@@ -179,7 +183,7 @@ This security model strikes a balance between **robust isolation** and **develop
 Currently, the following languages are officially supported:
 
 | Language | Priority |
-| -------- | -------- |
+|----------|----------|
 | Python   | High     |
 | Node.js  | Medium   |
 
@@ -210,6 +214,42 @@ To add Node.js dependencies:
    ```
 
 3. The dependencies will be saved to `package.json` and `package-lock.json`, and included in the Docker image when rebuilt.
+
+---
+
+
+## Usage
+
+### 🐍 A Python example
+
+```python
+def main(arg1: str, arg2: str) -> str:
+    return f"result: {arg1 + arg2}"
+```
+
+### 🟨 JavaScript examples
+
+A simple sync function
+
+```javascript
+function main({arg1, arg2}) {
+  return arg1+arg2
+}
+```
+
+Async funcion with aioxs
+
+```javascript
+const axios = require('axios');
+async function main() {
+  try {
+    const response = await axios.get('https://github.com/infiniflow/ragflow');
+    return 'Body:' + response.data;
+  } catch (error) {
+    return 'Error:' + error.message;
+  }
+}
+```
 
 ---
 
@@ -254,6 +294,22 @@ Follow this checklist to troubleshoot:
 
   ```text
   127.0.0.1 es01 infinity mysql minio redis sandbox-executor-manager
+  ```
+
+- [ ] **Are you running the latest executor manager image?**
+
+  **Common error:**
+
+  `docker: Error response from daemon: client version 1.43 is too old. Minimum supported API version is 1.44`
+
+  **Fix:**
+
+  Pull the refreshed image that bundles Docker CLI `29.1.0`, or rebuild it in `./sandbox/executor_manager`:
+
+  ```bash
+  docker pull infiniflow/sandbox-executor-manager:latest
+  # or
+  docker build -t sandbox-executor-manager:latest ./sandbox/executor_manager
   ```
 
 - [ ] **Have you enabled sandbox-related configurations in RAGFlow?**

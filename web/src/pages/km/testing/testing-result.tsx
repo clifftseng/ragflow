@@ -4,7 +4,7 @@ import { FilterPopover } from '@/components/list-filter-bar/filter-popover';
 import { FilterCollection } from '@/components/list-filter-bar/interface';
 import { RAGFlowPagination } from '@/components/ui/ragflow-pagination';
 import { useTranslate } from '@/hooks/common-hooks';
-import { useTestRetrieval } from '@/hooks/use-knowledge-request';
+import { useKmTestRetrieval } from './hooks';
 import { ITestingChunk } from '@/interfaces/database/knowledge';
 import camelCase from 'lodash/camelCase';
 import { useMemo } from 'react';
@@ -30,7 +30,7 @@ const ChunkTitle = ({ item }: { item: ITestingChunk }) => {
 };
 
 type TestingResultProps = Pick<
-  ReturnType<typeof useTestRetrieval>,
+  ReturnType<typeof useKmTestRetrieval>,
   | 'data'
   | 'filterValue'
   | 'handleFilterSubmit'

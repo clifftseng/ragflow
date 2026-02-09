@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useUpdateKnowledge } from '@/hooks/knowledge-hooks';
+import { useKmUpdateKnowledge } from './hooks';
 import { transformFile2Base64 } from '@/utils/file-util';
 import { Loader2Icon, Pencil, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -26,7 +26,7 @@ export function GeneralForm() {
   // const [submitLoading, setSubmitLoading] = useState(false); // submit button loading
 
   const { saveKnowledgeConfiguration, loading: submitLoading } =
-    useUpdateKnowledge();
+    useKmUpdateKnowledge();
 
   const defaultValues = useMemo(
     () => form.formState.defaultValues ?? {},

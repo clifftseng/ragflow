@@ -4,7 +4,7 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { DocumentParserType } from '@/constants/knowledge';
-import { useUpdateKnowledge } from '@/hooks/knowledge-hooks';
+import { useKmUpdateKnowledge } from './hooks';
 import { useMemo } from 'react';
 import { useParams } from 'umi';
 import { AudioConfiguration } from './configuration/audio';
@@ -52,7 +52,7 @@ export function ChunkMethodForm() {
   const { id: kb_id } = useParams();
 
   const { saveKnowledgeConfiguration, loading: submitLoading } =
-    useUpdateKnowledge();
+    useKmUpdateKnowledge();
 
   const finalParserId: DocumentParserType = useWatch({
     control: form.control,

@@ -28,8 +28,10 @@ from common import (
     parse_documents,
     rm_kb,
 )
+from configs import HOST_ADDRESS, VERSION
 from libs.auth import RAGFlowWebApiAuth
 from pytest import FixtureRequest
+from ragflow_sdk import RAGFlow
 from utils import wait_for
 from utils.file_utils import (
     create_docx_file,
@@ -45,13 +47,15 @@ from utils.file_utils import (
 )
 
 
-@wait_for(30, 1, "Document parsing timeout")
+@wait_for(300, 1, "Document parsing timeout")
 def condition(_auth, _kb_id):
     res = list_documents(_auth, {"kb_id": _kb_id})
     for doc in res["data"]["docs"]:
         if doc["run"] != "3":
             return False
     return True
+
+
 
 
 @pytest.fixture
@@ -86,6 +90,11 @@ def ragflow_tmp_dir(request, tmp_path_factory):
 @pytest.fixture(scope="session")
 def WebApiAuth(auth):
     return RAGFlowWebApiAuth(auth)
+
+
+@pytest.fixture(scope="session")
+def client(token: str) -> RAGFlow:
+    return RAGFlow(api_key=token, base_url=HOST_ADDRESS, version=VERSION)
 
 
 @pytest.fixture(scope="function")

@@ -19,6 +19,7 @@ import { useFetchKmDocumentList } from '../km-hooks';
 
 import { Search, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'umi';
 import { DatasetTable } from './dataset-table';
 // import { useBulkOperateDataset } from './use-bulk-operate-dataset'; // 已移除
 import { useCreateEmptyDocument } from './use-create-empty-document';
@@ -26,6 +27,7 @@ import { useHandleUploadDocument } from './use-upload-document';
 
 export default function Dataset() {
  const { t } = useTranslation();
+ const { id: kbId } = useParams();
  const {
   documentUploadVisible,
   hideDocumentUploadModal,

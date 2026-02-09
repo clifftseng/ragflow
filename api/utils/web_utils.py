@@ -20,7 +20,12 @@ import json
 import re
 import socket
 from urllib.parse import urlparse
-
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.header import Header
+from common import settings
+from quart import render_template_string
+from api.utils.email_templates import EMAIL_TEMPLATES
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
@@ -29,6 +34,59 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.expected_conditions import staleness_of
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+OTP_LENGTH = 4
+OTP_TTL_SECONDS = 5 * 60 # valid for 5 minutes
+ATTEMPT_LIMIT = 5 # maximum attempts
+ATTEMPT_LOCK_SECONDS = 30 * 60 # lock for 30 minutes
+RESEND_COOLDOWN_SECONDS = 60 # cooldown for 1 minute
+
+
+CONTENT_TYPE_MAP = {
+    # Office
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "doc": "application/msword",
+    "pdf": "application/pdf",
+    "csv": "text/csv",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Text/code
+    "txt": "text/plain",
+    "py": "text/plain",
+    "js": "text/plain",
+    "java": "text/plain",
+    "c": "text/plain",
+    "cpp": "text/plain",
+    "h": "text/plain",
+    "php": "text/plain",
+    "go": "text/plain",
+    "ts": "text/plain",
+    "sh": "text/plain",
+    "cs": "text/plain",
+    "kt": "text/plain",
+    "sql": "text/plain",
+    # Web
+    "md": "text/markdown",
+    "markdown": "text/markdown",
+    "mdx": "text/markdown",
+    "htm": "text/html",
+    "html": "text/html",
+    "json": "application/json",
+    # Image formats
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "tiff": "image/tiff",
+    "tif": "image/tiff",
+    "webp": "image/webp",
+    "svg": "image/svg+xml",
+    "ico": "image/x-icon",
+    "avif": "image/avif",
+    "heic": "image/heic",
+}
 
 
 def html2pdf(
@@ -127,3 +185,58 @@ def get_float(req: dict, key: str, default: float | int = 10.0) -> float:
         return parsed if parsed > 0 else default
     except (TypeError, ValueError):
         return default
+    
+
+async def send_email_html(to_email: str, subject: str, template_key: str, **context):
+
+    body = await render_template_string(EMAIL_TEMPLATES.get(template_key), **context)
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = Header(subject, "utf-8")
+    msg["From"] = f"{settings.MAIL_DEFAULT_SENDER[0]} <{settings.MAIL_DEFAULT_SENDER[1]}>"
+    msg["To"] = to_email
+
+    smtp = aiosmtplib.SMTP(
+        hostname=settings.MAIL_SERVER,
+        port=settings.MAIL_PORT,
+        use_tls=True,
+        timeout=10,
+    )
+
+    await smtp.connect()
+    await smtp.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+    await smtp.send_message(msg)
+    await smtp.quit()
+
+
+async def send_invite_email(to_email, invite_url, tenant_id, inviter):
+    # Reuse the generic HTML sender with 'invite' template
+    await send_email_html(
+        to_email=to_email,
+        subject="RAGFlow Invitation",
+        template_key="invite",
+        email=to_email,
+        invite_url=invite_url,
+        tenant_id=tenant_id,
+        inviter=inviter,
+    )
+
+
+def otp_keys(email: str):
+    email = (email or "").strip().lower()
+    return (
+        f"otp:{email}",
+        f"otp_attempts:{email}",
+        f"otp_last_sent:{email}",
+        f"otp_lock:{email}",
+    )
+
+
+def hash_code(code: str, salt: bytes) -> str:
+    import hashlib
+    import hmac 
+    return hmac.new(salt, (code or "").encode("utf-8"), hashlib.sha256).hexdigest()
+    
+
+def captcha_key(email: str) -> str:
+    return f"captcha:{email}"
+    

@@ -1,8 +1,8 @@
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
-import { DefaultAgentToolValuesMap } from '../../constant';
+import { Operator } from '../../constant';
+import { useAgentToolInitialValues } from '../../hooks/use-agent-tool-initial-values';
 import useGraphStore from '../../store';
-import { getAgentNodeTools } from '../../utils';
 
 export enum SearchDepth {
   Basic = 'basic',
@@ -15,23 +15,24 @@ export enum Topic {
 }
 
 export function useValues() {
-  const { clickedToolId, clickedNodeId, findUpstreamNodeById } = useGraphStore(
-    (state) => state,
-  );
+  const {
+    clickedToolId,
+    clickedNodeId,
+    findUpstreamNodeById,
+    getAgentToolById,
+  } = useGraphStore();
+
+  const { initializeAgentToolValues } = useAgentToolInitialValues();
 
   const values = useMemo(() => {
     const agentNode = findUpstreamNodeById(clickedNodeId);
-    const tools = getAgentNodeTools(agentNode);
-
-    const formData = tools.find(
-      (x) => x.component_name === clickedToolId,
-    )?.params;
+    const tool = getAgentToolById(clickedToolId, agentNode!);
+    const formData = tool?.params;
 
     if (isEmpty(formData)) {
-      const defaultValues =
-        DefaultAgentToolValuesMap[
-          clickedToolId as keyof typeof DefaultAgentToolValuesMap
-        ];
+      const defaultValues = initializeAgentToolValues(
+        (tool?.component_name || clickedNodeId) as Operator,
+      );
 
       return defaultValues;
     }
@@ -39,7 +40,13 @@ export function useValues() {
     return {
       ...formData,
     };
-  }, [clickedNodeId, clickedToolId, findUpstreamNodeById]);
+  }, [
+    clickedNodeId,
+    clickedToolId,
+    findUpstreamNodeById,
+    getAgentToolById,
+    initializeAgentToolValues,
+  ]);
 
   return values;
 }

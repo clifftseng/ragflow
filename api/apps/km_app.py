@@ -1,18 +1,30 @@
 # 檔案路徑: api/apps/km_app.py
 # 【【【最終修正版，修正所有已知錯誤】】】
 
-from flask import Blueprint, request, send_file
+import asyncio
+import inspect
+import time
+from functools import wraps
+
+from quart import Blueprint, request, send_file
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.document_service import DocumentService
-from api.utils.api_utils import get_json_result, server_error_response, get_data_error_result, validate_request
+from api.utils.api_utils import (
+    get_json_result,
+    server_error_response,
+    get_data_error_result,
+    validate_request,
+    not_allowed_parameters,
+    get_request_json,
+)
 from api.db.services.file_service import FileService
-from api.db import FileType, TaskStatus
+from api.db import FileType
+from common.constants import TaskStatus, RetCode, FileSource, LLMType, StatusEnum, PAGERANK_FLD
 from api.db.services.file2document_service import File2DocumentService
-from rag.utils.storage_factory import STORAGE_IMPL
-from api.db.db_models import Task
-from api.utils import get_uuid
-from api.constants import FILE_NAME_LEN_LIMIT
-from api import settings
+from api.db.db_models import Task, File
+from common.misc_utils import get_uuid
+from api.constants import FILE_NAME_LEN_LIMIT, DATASET_NAME_LIMIT
+from common import settings
 from api.db.services.task_service import queue_tasks
 from api.db.services.user_service import TenantService
 from rag.nlp import search
@@ -20,7 +32,13 @@ from api.db.db_models import Knowledgebase, Task
 from api.db.services.task_service import TaskService, queue_tasks
 import os
 import io # 【【【新增】】】: 導入 io 模組
-from api.utils.api_utils import require_km_token
+from api.utils.api_utils import verify_url_token
+from api.utils.km_auth import encrypt_token
+from api.apps import login_required, current_user
+from api.db.services.llm_service import LLMBundle
+from rag.app.tag import label_question
+from rag.prompts.generator import cross_languages, keyword_extraction
+from common.metadata_utils import apply_meta_data_filter
 
 #?token=dbbV1cU0i5ZIcCMjMi-q3JVveyKm90G2rXz7O6WrdHBuszNdfTZ78NtWCmdWh8zneXGn36HAWa2752eg1kOMNwbw1tu1onqMLiDJL7mvuTnlFPezqrhBT_c49ukJ973QLw1ubgDpSmVuAgaV2S-SNcT1pVJNeRfzeDhivMGolS6ke_qCXTqRrX7twfVYrcntSuqaDqIyPgj1SxGUbcX1XloVCHh7_2jxB6jxBC3LyrG-6ALg62UE91yFKy63YkYgreKqB8OdqO0baD8YgnLX119TfQlMko0-m2jIU8mrlL5NHC3V7vs1pZ4BKoipEOgD1UaXxMv8QGigxA-1EDx-ag==
 # @classmethod
@@ -35,24 +53,61 @@ from api.utils.api_utils import require_km_token
 #     return cls._private_key
         
 manager = Blueprint('km_app', __name__)
+KM_TOKEN_TTL_SECONDS = 7 * 24 * 3600
+
+
+def require_km_token(func):
+    @wraps(func)
+    async def decorated_function(*args, **kwargs):
+        token = request.args.get("token")
+        if not token:
+            return get_json_result(code=403, message="Access Forbidden:Missing token.")
+        if not verify_url_token(token):
+            return get_json_result(code=403, message="Access Forbidden: Invalid or missing token.")
+        if inspect.iscoroutinefunction(func):
+            return await func(*args, **kwargs)
+        return func(*args, **kwargs)
+    return decorated_function
+
+
+@manager.route('/token', methods=['GET'])
+@login_required
+async def create_km_token():
+    kb_id = request.args.get("kb_id")
+    if not kb_id:
+        return get_data_error_result(message="kb_id is required.")
+
+    try:
+        if not KnowledgebaseService.query(created_by=current_user.id, id=kb_id):
+            return get_json_result(
+                data=False,
+                message='Only owner of dataset authorized for this operation.',
+                code=RetCode.OPERATING_ERROR,
+            )
+
+        expire_at = int(time.time()) + KM_TOKEN_TTL_SECONDS
+        token = encrypt_token({"id": kb_id, "issuetime": expire_at})
+        return get_json_result(data={"token": token, "expire_at": expire_at})
+    except Exception as e:
+        return server_error_response(e)
 
 @manager.route('/detail', methods=['GET'])
 @require_km_token
-def get_kb_detail():
+async def get_kb_detail():
     kb_id = request.args.get("kb_id")
     if not kb_id:
         return get_data_error_result(message="kb_id is required.")
     try:
         res = KnowledgebaseService.get_public_detail(kb_id)
         if res is None:
-            return get_json_result(data=None, code=404, msg=f"Knowledge base '{kb_id}' not found.")
+            return get_json_result(data=None, code=404, message=f"Knowledge base '{kb_id}' not found.")
         return get_json_result(data=res)
     except Exception as e:
         return server_error_response(e)
 
 @manager.route('/documents', methods=['GET'])
 @require_km_token
-def get_documents():
+async def get_documents():
     kb_id = request.args.get("kb_id")
     if not kb_id:
         return get_data_error_result(message="kb_id is required.")
@@ -71,11 +126,254 @@ def get_documents():
     except Exception as e:
         return server_error_response(e)
 
+
+def _run_async(coro):
+    try:
+        return asyncio.run(coro)
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            fut = asyncio.run_coroutine_threadsafe(coro, loop)
+            return fut.result()
+        return loop.run_until_complete(coro)
+
+
+@manager.route('/update', methods=['POST'])
+@require_km_token
+@validate_request("kb_id", "name", "description", "parser_id")
+@not_allowed_parameters("id", "tenant_id", "created_by", "create_time", "update_time", "create_date", "update_date", "created_by")
+async def update_public_kb():
+    req = await get_request_json() or {}
+    if not isinstance(req.get("name"), str):
+        return get_data_error_result(message="Dataset name must be string.")
+    if req["name"].strip() == "":
+        return get_data_error_result(message="Dataset name can't be empty.")
+    if len(req["name"].encode("utf-8")) > DATASET_NAME_LIMIT:
+        return get_data_error_result(
+            message=f"Dataset name length is {len(req['name'])} which is large than {DATASET_NAME_LIMIT}"
+        )
+    req["name"] = req["name"].strip()
+
+    try:
+        e, kb = KnowledgebaseService.get_by_id(req["kb_id"])
+        if not e:
+            return get_data_error_result(message="Can't find this dataset!")
+
+        # Rename folder in FileService if needed
+        if req["name"].lower() != kb.name.lower():
+            FileService.filter_update(
+                [
+                    File.tenant_id == kb.tenant_id,
+                    File.source_type == FileSource.KNOWLEDGEBASE,
+                    File.type == "folder",
+                    File.name == kb.name,
+                ],
+                {"name": req["name"]},
+            )
+
+        if req["name"].lower() != kb.name.lower() and len(
+            KnowledgebaseService.query(
+                name=req["name"],
+                tenant_id=kb.tenant_id,
+                status=StatusEnum.VALID.value,
+            )
+        ) >= 1:
+            return get_data_error_result(message="Duplicated dataset name.")
+
+        del req["kb_id"]
+        if not KnowledgebaseService.update_by_id(kb.id, req):
+            return get_data_error_result()
+
+        if kb.pagerank != req.get("pagerank", 0):
+            if req.get("pagerank", 0) > 0:
+                settings.docStoreConn.update(
+                    {"kb_id": kb.id},
+                    {PAGERANK_FLD: req["pagerank"]},
+                    search.index_name(kb.tenant_id),
+                    kb.id,
+                )
+            else:
+                settings.docStoreConn.update(
+                    {"exists": PAGERANK_FLD},
+                    {"remove": PAGERANK_FLD},
+                    search.index_name(kb.tenant_id),
+                    kb.id,
+                )
+
+        e, kb = KnowledgebaseService.get_by_id(kb.id)
+        if not e:
+            return get_data_error_result(message="Database error (Knowledgebase rename)!")
+        kb = kb.to_dict()
+        kb.update(req)
+        return get_json_result(data=kb)
+    except Exception as e:
+        return server_error_response(e)
+
+
+@manager.route('/retrieval_test', methods=['POST'])
+@require_km_token
+@validate_request("kb_id", "question")
+async def retrieval_test_public():
+    req = await get_request_json() or {}
+    page = int(req.get("page", 1))
+    size = int(req.get("size", 30))
+    question = req["question"]
+    kb_ids = req["kb_id"]
+    if isinstance(kb_ids, str):
+        kb_ids = [kb_ids]
+    if not kb_ids:
+        return get_json_result(
+            data=False,
+            message='Please specify dataset firstly.',
+            code=RetCode.DATA_ERROR,
+        )
+
+    doc_ids = req.get("doc_ids", [])
+    use_kg = req.get("use_kg", False)
+    top = int(req.get("top_k", 1024))
+    langs = req.get("cross_languages", [])
+
+    try:
+        # resolve tenant from kb
+        e, kb = KnowledgebaseService.get_by_id(kb_ids[0])
+        if not e:
+            return get_data_error_result(message="Knowledgebase not found!")
+        tenant_id = kb.tenant_id
+
+        local_doc_ids = list(doc_ids) if doc_ids else []
+        meta_data_filter = req.get("meta_data_filter") or {}
+        chat_mdl = None
+        if meta_data_filter.get("method") in ["auto", "semi_auto"]:
+            chat_mdl = LLMBundle(tenant_id, LLMType.CHAT)
+
+        if meta_data_filter:
+            metas = DocumentService.get_meta_by_kbs(kb_ids)
+            local_doc_ids = _run_async(
+                apply_meta_data_filter(meta_data_filter, metas, question, chat_mdl, local_doc_ids)
+            )
+
+        _question = question
+        if langs:
+            _question = _run_async(cross_languages(tenant_id, None, _question, langs))
+
+        embd_mdl = LLMBundle(tenant_id, LLMType.EMBEDDING.value, llm_name=kb.embd_id)
+
+        rerank_mdl = None
+        if req.get("rerank_id"):
+            rerank_mdl = LLMBundle(tenant_id, LLMType.RERANK.value, llm_name=req["rerank_id"])
+
+        if req.get("keyword", False):
+            chat_mdl = LLMBundle(tenant_id, LLMType.CHAT)
+            _question += _run_async(keyword_extraction(chat_mdl, _question))
+
+        labels = label_question(_question, [kb])
+        ranks = settings.retriever.retrieval(
+            _question,
+            embd_mdl,
+            [tenant_id],
+            kb_ids,
+            page,
+            size,
+            float(req.get("similarity_threshold", 0.0)),
+            float(req.get("vector_similarity_weight", 0.3)),
+            top,
+            local_doc_ids,
+            rerank_mdl=rerank_mdl,
+            highlight=req.get("highlight", False),
+            rank_feature=labels,
+        )
+        if use_kg:
+            ck = settings.kg_retriever.retrieval(
+                _question,
+                [tenant_id],
+                kb_ids,
+                embd_mdl,
+                LLMBundle(tenant_id, LLMType.CHAT),
+            )
+            if ck.get("content_with_weight"):
+                ranks["chunks"].insert(0, ck)
+        ranks["chunks"] = settings.retriever.retrieval_by_children(ranks["chunks"], [tenant_id])
+
+        for c in ranks["chunks"]:
+            c.pop("vector", None)
+        ranks["labels"] = labels
+        return get_json_result(data=ranks)
+    except Exception as e:
+        if str(e).find("not_found") > 0:
+            return get_json_result(
+                data=False,
+                message='No chunk found! Check the chunk status please!',
+                code=RetCode.DATA_ERROR,
+            )
+        return server_error_response(e)
+
+
+@manager.route('/<kb_id>/tags', methods=['GET'])
+@require_km_token
+def list_tags_public(kb_id):
+    e, kb = KnowledgebaseService.get_by_id(kb_id)
+    if not e:
+        return get_data_error_result(message="Knowledgebase not found!")
+    tags = settings.retriever.all_tags(kb.tenant_id, [kb_id])
+    return get_json_result(data=tags)
+
+
+@manager.route('/tags', methods=['GET'])
+@require_km_token
+def list_tags_from_kbs_public():
+    kb_ids = request.args.get("kb_ids", "").split(",")
+    kb_ids = [kb_id for kb_id in kb_ids if kb_id]
+    if not kb_ids:
+        return get_json_result(data=[])
+    tenant_ids = []
+    for kb_id in kb_ids:
+        e, kb = KnowledgebaseService.get_by_id(kb_id)
+        if not e:
+            continue
+        tenant_ids.append(kb.tenant_id)
+    tags = []
+    for tenant_id in set(tenant_ids):
+        tags += settings.retriever.all_tags(tenant_id, kb_ids)
+    return get_json_result(data=tags)
+
+
+@manager.route('/<kb_id>/rm_tags', methods=['POST'])
+@require_km_token
+async def rm_tags_public(kb_id):
+    req = await get_request_json() or {}
+    e, kb = KnowledgebaseService.get_by_id(kb_id)
+    if not e:
+        return get_data_error_result(message="Knowledgebase not found!")
+    for t in req.get("tags", []):
+        settings.docStoreConn.update(
+            {"tag_kwd": t, "kb_id": [kb_id]},
+            {"remove": {"tag_kwd": t}},
+            search.index_name(kb.tenant_id),
+            kb_id,
+        )
+    return get_json_result(data=True)
+
+
+@manager.route('/<kb_id>/rename_tag', methods=['POST'])
+@require_km_token
+async def rename_tags_public(kb_id):
+    req = await get_request_json() or {}
+    e, kb = KnowledgebaseService.get_by_id(kb_id)
+    if not e:
+        return get_data_error_result(message="Knowledgebase not found!")
+    settings.docStoreConn.update(
+        {"tag_kwd": req.get("from_tag"), "kb_id": [kb_id]},
+        {"remove": {"tag_kwd": (req.get("from_tag") or "").strip()}, "add": {"tag_kwd": req.get("to_tag")}},
+        search.index_name(kb.tenant_id),
+        kb_id,
+    )
+    return get_json_result(data=True)
+
 @manager.route("/document/create", methods=["POST"])
 @validate_request("name", "kb_id")
 @require_km_token
-def create_public_document():
-    req = request.json
+async def create_public_document():
+    req = await get_request_json()
     kb_id = req["kb_id"]
     if not kb_id:
         return get_data_error_result(message='Lack of "KB ID"')
@@ -103,12 +401,13 @@ def create_public_document():
 
 @manager.route("/document/upload/<kb_id>", methods=["POST"])
 @require_km_token
-def upload_public_document(kb_id: str):
+async def upload_public_document(kb_id: str):
     if not kb_id:
         return get_data_error_result(message='Lack of "KB ID"')
-    if "file" not in request.files:
+    files = await request.files
+    if "file" not in files:
         return get_data_error_result(message="No file part in request!")
-    file_objs = request.files.getlist("file")
+    file_objs = files.getlist("file")
     for file_obj in file_objs:
         if file_obj.filename == "":
             return get_data_error_result(message="No file selected!")
@@ -143,8 +442,9 @@ def upload_public_document(kb_id: str):
 @manager.route("/document/rm", methods=["POST"])
 @validate_request("doc_ids")
 @require_km_token
-def rm_public_document():
-    doc_ids = request.json["doc_ids"]
+async def rm_public_document():
+    req = await get_request_json()
+    doc_ids = req["doc_ids"]
     if not isinstance(doc_ids, list):
         return get_data_error_result(message="doc_ids must be a list.")
     try:
@@ -161,8 +461,8 @@ def rm_public_document():
 @manager.route("/document/run", methods=["POST"])
 @validate_request("doc_ids", "run_type")
 @require_km_token
-def run_public_document():
-    req = request.json
+async def run_public_document():
+    req = await get_request_json()
     doc_ids = req.get("doc_ids")
     run_type = req.get("run_type")
     if not isinstance(doc_ids, list):
@@ -178,7 +478,7 @@ def run_public_document():
                 if not tenant_id: continue
 
                 # 1. 刪除向量數據庫中的舊 chunks (如果存在)
-                if settings.docStoreConn.indexExist(search.index_name(tenant_id), doc.kb_id):
+                if settings.docStoreConn.index_exist(search.index_name(tenant_id), doc.kb_id):
                     settings.docStoreConn.delete({"doc_id": doc.id}, search.index_name(tenant_id), doc.kb_id)
 
                 # 2. 刪除舊的 Task 紀錄
@@ -216,8 +516,8 @@ def run_public_document():
 @manager.route("/document/rename", methods=["POST"])
 @validate_request("doc_id", "name")
 @require_km_token
-def rename_public_document():
-    req = request.json
+async def rename_public_document():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     new_name = req["name"].strip()
 
@@ -254,8 +554,8 @@ def rename_public_document():
 @manager.route("/document/change_status", methods=["POST"])
 @validate_request("doc_id", "status")
 @require_km_token
-def change_status_public_document():
-    req = request.json
+async def change_status_public_document():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     status_str = req["status"]
 
@@ -295,8 +595,8 @@ def change_status_public_document():
 @manager.route("/document/change_parser", methods=["POST"])
 @validate_request("doc_id", "parser_id", "parser_config")
 @require_km_token
-def change_parser_public():
-    req = request.json
+async def change_parser_public():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     parser_id = req["parser_id"]
     parser_config = req["parser_config"]
@@ -314,8 +614,8 @@ def change_parser_public():
 @manager.route("/document/set_meta", methods=["POST"])
 @validate_request("doc_id", "meta")
 @require_km_token
-def set_meta_public():
-    req = request.json
+async def set_meta_public():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     
     try:
@@ -344,8 +644,8 @@ def set_meta_public():
 @manager.route('/chunk/list', methods=['POST'])
 @validate_request("doc_id")
 @require_km_token
-def list_chunks_public():
-    req = request.json
+async def list_chunks_public():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     page = int(req.get("page", 1))
     size = int(req.get("size", 30))
@@ -368,7 +668,7 @@ def list_chunks_public():
         if "available_int" in req:
             query["available_int"] = int(req["available_int"])
 
-        sres = settings.retrievaler.search(query, search.index_name(tenant_id), kb_ids, highlight=True)
+        sres = settings.retriever.search(query, search.index_name(tenant_id), kb_ids, highlight=True)
         res = {"total": sres.total, "chunks": [], "doc": doc.to_dict()}
         for id in sres.ids:
             d = {
@@ -392,8 +692,8 @@ def list_chunks_public():
 @manager.route('/chunk/set', methods=['POST'])
 @validate_request("doc_id", "chunk_id", "content_with_weight")
 @require_km_token
-def set_chunk_public():
-    req = request.json
+async def set_chunk_public():
+    req = await get_request_json()
     content = req["content_with_weight"]
 
     if not content or not content.strip():
@@ -431,8 +731,8 @@ def set_chunk_public():
 @manager.route('/chunk/rm', methods=['POST'])
 @validate_request("chunk_ids", "doc_id")
 @require_km_token
-def rm_chunk_public():
-    req = request.json
+async def rm_chunk_public():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     chunk_ids = req["chunk_ids"]
 
@@ -487,7 +787,7 @@ def public_document_thumbnails():
         return server_error_response(e)
 @manager.route("/document/get/<doc_id>", methods=["GET"])
 @require_km_token
-def get_public_document(doc_id):
+async def get_public_document(doc_id):
     """
     Handle public document download requests.
     """
@@ -502,16 +802,16 @@ def get_public_document(doc_id):
         if doc.type == FileType.VIRTUAL.value:
             return get_data_error_result(message="Virtual documents cannot be downloaded.")
 
-        # 【【【修正 2/2】】】: 使用正確導入的 STORAGE_IMPL 物件
-        file_content = STORAGE_IMPL.get(doc.kb_id, doc.location)
+        doc_id, doc_location = File2DocumentService.get_storage_address(doc_id=doc.id)
+        file_content = settings.STORAGE_IMPL.get(doc_id, doc_location)
 
         if file_content is None:
             return get_data_error_result(message="File content not found in storage.", code=404)
 
-        return send_file(
+        return await send_file(
             io.BytesIO(file_content),
             as_attachment=True,
-            download_name=doc.name,
+            attachment_filename=doc.name,
             mimetype='application/octet-stream'
         )
     except Exception as e:
@@ -520,13 +820,13 @@ def get_public_document(doc_id):
 import hashlib
 import datetime
 from rag.nlp import rag_tokenizer
-from api.db import LLMType
+from common.constants import LLMType
 from api.db.services.llm_service import LLMBundle
 @manager.route('/chunk/create', methods=['POST'])
 @validate_request("doc_id", "content_with_weight")
 @require_km_token
-def public_create_chunk():
-    req = request.json
+async def public_create_chunk():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     content = req["content_with_weight"]
 
@@ -588,8 +888,8 @@ def public_create_chunk():
 @manager.route('/chunk/switch', methods=['POST'])
 @validate_request("chunk_ids", "available_int", "doc_id")
 @require_km_token
-def switch_chunk_public():
-    req = request.json
+async def switch_chunk_public():
+    req = await get_request_json()
     doc_id = req["doc_id"]
     chunk_ids = req["chunk_ids"]
     available_int = int(req["available_int"])
@@ -619,5 +919,3 @@ def switch_chunk_public():
         return get_json_result(data=True)
     except Exception as e:
         return server_error_response(e)
-
-

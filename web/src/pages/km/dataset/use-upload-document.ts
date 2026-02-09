@@ -1,6 +1,7 @@
 // 檔案路徑: web/src/pages/km/dataset/use-upload-document.ts
 
 import { uploadPublicDocument } from '@/services/knowledge-service';
+import { UploadFormSchemaType } from '@/components/file-upload-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import { useState } from 'react';
@@ -21,7 +22,10 @@ export const useHandleUploadDocument = () => {
   };
 
   const uploadMutation = useMutation({
-    mutationFn: (fileList: File[]) => {
+    mutationFn: (payload: UploadFormSchemaType | File[]) => {
+      const fileList = Array.isArray(payload)
+        ? payload
+        : (payload?.fileList ?? []);
       const formData = new FormData();
       for (const file of fileList) {
         formData.append('file', file);
@@ -39,7 +43,9 @@ export const useHandleUploadDocument = () => {
     setDocumentUploadVisible(true);
   };
 
-  const onDocumentUploadOk = async (fileList: File[]) => {
+  const onDocumentUploadOk = async (values?: UploadFormSchemaType) => {
+    const fileList = values?.fileList ?? [];
+    if (!fileList.length) return;
     await uploadMutation.mutateAsync(fileList);
     hideDocumentUploadModal();
   };

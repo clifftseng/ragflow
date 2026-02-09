@@ -1,7 +1,7 @@
 import {
-  useFetchKnowledgeBaseConfiguration,
+  useFetchKmKnowledgeBaseConfiguration,
   useFetchTagListByKnowledgeIds,
-} from '@/hooks/knowledge-hooks';
+} from '@/pages/km/setting/hooks';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Form, InputNumber, Select } from 'antd';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -13,7 +13,7 @@ const FieldKey = 'tag_feas';
 export const TagFeatureItem = () => {
   const form = Form.useFormInstance();
   const { t } = useTranslation();
-  const { data: knowledgeConfiguration } = useFetchKnowledgeBaseConfiguration();
+  const { data: knowledgeConfiguration } = useFetchKmKnowledgeBaseConfiguration();
 
   const { setKnowledgeIds, list } = useFetchTagListByKnowledgeIds();
 

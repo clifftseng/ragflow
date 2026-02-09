@@ -1,104 +1,184 @@
 import { ReactComponent as AssistantIcon } from '@/assets/svg/assistant.svg';
 import { MessageType } from '@/constants/chat';
-import { useSetModalState } from '@/hooks/common-hooks';
-import { IReference, IReferenceChunk } from '@/interfaces/database/chat';
+import {
+  IMessage,
+  IReferenceChunk,
+  IReferenceObject,
+  UploadResponseDataType,
+} from '@/interfaces/database/chat';
 import classNames from 'classnames';
 import {
   PropsWithChildren,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 
-import {
-  useFetchDocumentInfosByIds,
-  useFetchDocumentThumbnailsByIds,
-} from '@/hooks/document-hooks';
 import { IRegenerateMessage, IRemoveMessageById } from '@/hooks/logic-hooks';
-import { IMessage } from '@/pages/chat/interface';
-import MarkdownContent from '@/pages/chat/markdown-content';
-import { getExtension, isImage } from '@/utils/document-util';
-import { Avatar, Button, Flex, List, Space, Typography } from 'antd';
-import FileIcon from '../file-icon';
-import IndentedTreeModal from '../indented-tree/modal';
-import NewDocumentLink from '../new-document-link';
+import { INodeEvent, MessageEventType } from '@/hooks/use-send-message';
+import { cn } from '@/lib/utils';
+import { AgentChatContext } from '@/pages/agent/context';
+import { WorkFlowTimeline } from '@/pages/agent/log-sheet/workflow-timeline';
+import { isEmpty } from 'lodash';
+import { Atom, ChevronDown, ChevronUp } from 'lucide-react';
+import MarkdownContent from '../next-markdown-content';
+import {
+  PDFDownloadButton,
+  extractPDFDownloadInfo,
+  removePDFDownloadInfo,
+} from '../pdf-download-button';
+import { RAGFlowAvatar } from '../ragflow-avatar';
 import { useTheme } from '../theme-provider';
+import { Button } from '../ui/button';
 import { AssistantGroupButton, UserGroupButton } from './group-button';
 import styles from './index.less';
-
-const { Text } = Typography;
+import { ReferenceDocumentList } from './reference-document-list';
+import { ReferenceImageList } from './reference-image-list';
+import { UploadedMessageFiles } from './uploaded-message-files';
 
 interface IProps
   extends Partial<IRemoveMessageById>,
     IRegenerateMessage,
     PropsWithChildren {
   item: IMessage;
-  reference: IReference;
+  conversationId?: string;
+  currentEventListWithoutMessageById?: (messageId: string) => INodeEvent[];
+  setCurrentMessageId?: (messageId: string) => void;
+  reference?: IReferenceObject;
   loading?: boolean;
   sendLoading?: boolean;
   visibleAvatar?: boolean;
   nickname?: string;
   avatar?: string;
   avatarDialog?: string | null;
+  agentName?: string;
   clickDocumentButton?: (documentId: string, chunk: IReferenceChunk) => void;
   index: number;
   showLikeButton?: boolean;
   showLoudspeaker?: boolean;
+  showLog?: boolean;
+  isShare?: boolean;
 }
 
-const MessageItem = ({
+function MessageItem({
   item,
+  conversationId,
+  currentEventListWithoutMessageById,
+  setCurrentMessageId,
   reference,
   loading = false,
   avatar,
   avatarDialog,
+  agentName,
   sendLoading = false,
   clickDocumentButton,
-  index,
   removeMessageById,
   regenerateMessage,
   showLikeButton = true,
   showLoudspeaker = true,
   visibleAvatar = true,
   children,
-}: IProps) => {
+  showLog,
+  isShare,
+}: IProps) {
   const { theme } = useTheme();
   const isAssistant = item.role === MessageType.Assistant;
   const isUser = item.role === MessageType.User;
-  const { data: documentList, setDocumentIds } = useFetchDocumentInfosByIds();
-  const { data: documentThumbnails, setDocumentIds: setIds } =
-    useFetchDocumentThumbnailsByIds();
-  const { visible, hideModal, showModal } = useSetModalState();
-  const [clickedDocumentId, setClickedDocumentId] = useState('');
+  const [showThinking, setShowThinking] = useState(false);
+  const { setLastSendLoadingFunc } = useContext(AgentChatContext);
 
-  const referenceDocumentList = useMemo(() => {
-    return reference?.doc_aggs ?? [];
+  useEffect(() => {
+    if (typeof setLastSendLoadingFunc === 'function') {
+      setLastSendLoadingFunc(loading, item.id);
+    }
+  }, [loading, setLastSendLoadingFunc, item.id]);
+
+  const referenceDocuments = useMemo(() => {
+    const docs = reference?.doc_aggs ?? {};
+
+    return Object.values(docs);
   }, [reference?.doc_aggs]);
 
-  const handleUserDocumentClick = useCallback(
-    (id: string) => () => {
-      setClickedDocumentId(id);
-      showModal();
-    },
-    [showModal],
+  // Extract PDF download info from message content
+  const pdfDownloadInfo = useMemo(
+    () => extractPDFDownloadInfo(item.content),
+    [item.content],
   );
+
+  // If we have PDF download info, extract the remaining text
+  const messageContent = useMemo(() => {
+    if (!pdfDownloadInfo) return item.content;
+
+    // Remove the JSON part from the content to avoid showing it
+    return removePDFDownloadInfo(item.content, pdfDownloadInfo);
+  }, [item.content, pdfDownloadInfo]);
 
   const handleRegenerateMessage = useCallback(() => {
     regenerateMessage?.(item);
   }, [regenerateMessage, item]);
 
   useEffect(() => {
-    const ids = item?.doc_ids ?? [];
-    if (ids.length) {
-      setDocumentIds(ids);
-      const documentIds = ids.filter((x) => !(x in documentThumbnails));
-      if (documentIds.length) {
-        setIds(documentIds);
-      }
+    if (typeof setCurrentMessageId === 'function') {
+      setCurrentMessageId(item.id);
     }
-  }, [item.doc_ids, setDocumentIds, setIds, documentThumbnails]);
+  }, [item.id, setCurrentMessageId]);
+
+  const startedNodeList = useCallback(
+    (item: IMessage) => {
+      const finish = currentEventListWithoutMessageById?.(item.id)?.some(
+        (item) => item.event === MessageEventType.WorkflowFinished,
+      );
+      return !finish && loading;
+    },
+    [currentEventListWithoutMessageById, loading],
+  );
+
+  const renderContent = useCallback(() => {
+    /* Show message content if there's any text besides the download */
+
+    if (pdfDownloadInfo) {
+      return null;
+    }
+
+    return (
+      <div
+        className={cn({
+          [theme === 'dark' ? styles.messageTextDark : styles.messageText]:
+            isAssistant,
+          [styles.messageUserText]: !isAssistant,
+          'bg-bg-card': !isAssistant,
+        })}
+      >
+        {item.data ? (
+          children
+        ) : sendLoading && isEmpty(messageContent) ? (
+          <>{!isShare && 'running...'}</>
+        ) : (
+          <MarkdownContent
+            loading={loading}
+            content={messageContent}
+            reference={reference}
+            clickDocumentButton={clickDocumentButton}
+          ></MarkdownContent>
+        )}
+      </div>
+    );
+  }, [
+    children,
+    clickDocumentButton,
+    isAssistant,
+    isShare,
+    item.data,
+    loading,
+    messageContent,
+    pdfDownloadInfo,
+    reference,
+    sendLoading,
+    theme,
+  ]);
 
   return (
     <div
@@ -120,138 +200,151 @@ const MessageItem = ({
         >
           {visibleAvatar &&
             (item.role === MessageType.User ? (
-              <Avatar size={40} src={avatar ?? '/logo.svg'} />
-            ) : avatarDialog ? (
-              <Avatar size={40} src={avatarDialog} />
+              <RAGFlowAvatar avatar={avatar ?? '/logo.svg'} />
+            ) : avatarDialog || agentName ? (
+              <RAGFlowAvatar
+                avatar={avatarDialog as string}
+                name={agentName}
+                isPerson
+              />
             ) : (
               <AssistantIcon />
             ))}
-
-          <Flex vertical gap={8} flex={1}>
-            <Space>
-              {isAssistant ? (
-                <AssistantGroupButton
-                  messageId={item.id}
-                  content={item.content}
-                  prompt={item.prompt}
-                  showLikeButton={showLikeButton}
-                  audioBinary={item.audio_binary}
-                  showLoudspeaker={showLoudspeaker}
-                ></AssistantGroupButton>
-              ) : (
-                <UserGroupButton
-                  content={item.content}
-                  messageId={item.id}
-                  removeMessageById={removeMessageById}
-                  regenerateMessage={
-                    regenerateMessage && handleRegenerateMessage
-                  }
-                  sendLoading={sendLoading}
-                ></UserGroupButton>
+          <section className="flex-col gap-2 flex-1">
+            <div className="flex justify-between items-center">
+              {isShare && isAssistant && (
+                <Button
+                  variant={'transparent'}
+                  onClick={() => setShowThinking((think) => !think)}
+                >
+                  <div className="flex items-center gap-1">
+                    <div className="">
+                      <Atom
+                        className={startedNodeList(item) ? 'animate-spin' : ''}
+                      />
+                    </div>
+                    Thinking
+                    {showThinking ? <ChevronUp /> : <ChevronDown />}
+                  </div>
+                </Button>
               )}
-
-              {/* <b>{isAssistant ? '' : nickname}</b> */}
-            </Space>
-            <div
-              className={
-                isAssistant
-                  ? theme === 'dark'
-                    ? styles.messageTextDark
-                    : styles.messageText
-                  : styles.messageUserText
-              }
-            >
-              {item.data ? (
-                children
-              ) : (
-                <MarkdownContent
-                  loading={loading}
-                  content={item.content}
-                  reference={reference}
-                  clickDocumentButton={clickDocumentButton}
-                ></MarkdownContent>
-              )}
+              <div className="space-x-1">
+                {isAssistant ? (
+                  <>
+                    {isShare && !sendLoading && !isEmpty(item.content) && (
+                      <AssistantGroupButton
+                        messageId={item.id}
+                        content={item.content}
+                        prompt={item.prompt}
+                        showLikeButton={showLikeButton}
+                        audioBinary={item.audio_binary}
+                        showLoudspeaker={showLoudspeaker}
+                        showLog={showLog}
+                        attachment={item.attachment}
+                      ></AssistantGroupButton>
+                    )}
+                    {!isShare && (
+                      <AssistantGroupButton
+                        messageId={item.id}
+                        content={item.content}
+                        prompt={item.prompt}
+                        showLikeButton={showLikeButton}
+                        audioBinary={item.audio_binary}
+                        showLoudspeaker={showLoudspeaker}
+                        showLog={showLog}
+                        attachment={item.attachment}
+                      ></AssistantGroupButton>
+                    )}
+                  </>
+                ) : (
+                  <UserGroupButton
+                    content={item.content}
+                    messageId={item.id}
+                    removeMessageById={removeMessageById}
+                    regenerateMessage={
+                      regenerateMessage && handleRegenerateMessage
+                    }
+                    sendLoading={sendLoading}
+                  ></UserGroupButton>
+                )}
+              </div>
             </div>
-            {isAssistant && referenceDocumentList.length > 0 && (
-              <List
-                bordered
-                dataSource={referenceDocumentList}
-                renderItem={(item) => {
-                  return (
-                    <List.Item>
-                      <Flex gap={'small'} align="center">
-                        <FileIcon
-                          id={item.doc_id}
-                          name={item.doc_name}
-                        ></FileIcon>
 
-                        <NewDocumentLink
-                          documentId={item.doc_id}
-                          documentName={item.doc_name}
-                          prefix="document"
-                          link={item.url}
-                        >
-                          {item.doc_name}
-                        </NewDocumentLink>
-                      </Flex>
-                    </List.Item>
-                  );
-                }}
+            {isAssistant &&
+              currentEventListWithoutMessageById &&
+              showThinking && (
+                <div className="mt-4 mb-4">
+                  <WorkFlowTimeline
+                    currentEventListWithoutMessage={currentEventListWithoutMessageById(
+                      item.id,
+                    )}
+                    isShare={isShare}
+                    currentMessageId={item.id}
+                    canvasId={conversationId}
+                    sendLoading={loading}
+                  />
+                </div>
+              )}
+
+            {/* Show PDF download button if download info is present */}
+            {pdfDownloadInfo && (
+              <PDFDownloadButton
+                downloadInfo={pdfDownloadInfo}
+                className="mb-2"
               />
             )}
-            {isUser && documentList.length > 0 && (
-              <List
-                bordered
-                dataSource={documentList}
-                renderItem={(item) => {
-                  // TODO:
-                  // const fileThumbnail =
-                  //   documentThumbnails[item.id] || documentThumbnails[item.id];
-                  const fileExtension = getExtension(item.name);
-                  return (
-                    <List.Item>
-                      <Flex gap={'small'} align="center">
-                        <FileIcon id={item.id} name={item.name}></FileIcon>
 
-                        {isImage(fileExtension) ? (
-                          <NewDocumentLink
-                            documentId={item.id}
-                            documentName={item.name}
-                            prefix="document"
-                          >
-                            {item.name}
-                          </NewDocumentLink>
-                        ) : (
-                          <Button
-                            type={'text'}
-                            onClick={handleUserDocumentClick(item.id)}
-                          >
-                            <Text
-                              style={{ maxWidth: '40vw' }}
-                              ellipsis={{ tooltip: item.name }}
-                            >
-                              {item.name}
-                            </Text>
-                          </Button>
-                        )}
-                      </Flex>
-                    </List.Item>
-                  );
-                }}
-              />
+            {renderContent()}
+
+            {isAssistant && (
+              <ReferenceImageList
+                referenceChunks={reference?.chunks}
+                messageContent={messageContent}
+              ></ReferenceImageList>
             )}
-          </Flex>
+
+            {isAssistant && referenceDocuments.length > 0 && (
+              <ReferenceDocumentList
+                list={referenceDocuments}
+              ></ReferenceDocumentList>
+            )}
+
+            {isUser && (
+              <UploadedMessageFiles
+                files={item.files as File[] | UploadResponseDataType[]}
+              ></UploadedMessageFiles>
+            )}
+            {/* {isAssistant && item.attachment && item.attachment.doc_id && (
+              <div className="w-full flex items-center justify-end">
+                <Button
+                  variant="link"
+                  className="p-1 m-0 h-auto text-text-sub-title-invert"
+                  onClick={async () => {
+                    if (item.attachment?.doc_id) {
+                      try {
+                        const response = await downloadFile({
+                          docId: item.attachment.doc_id,
+                          ext: item.attachment.format,
+                        });
+                        const blob = new Blob([response.data], {
+                          type: response.data.type,
+                        });
+                        downloadFileFromBlob(blob, item.attachment.file_name);
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                      }
+                    }
+                  }}
+                >
+                  <Download size={16} />
+                </Button>
+              </div>
+            )} */}
+          </section>
         </div>
       </section>
-      {visible && (
-        <IndentedTreeModal
-          visible={visible}
-          hideModal={hideModal}
-          documentId={clickedDocumentId}
-        ></IndentedTreeModal>
-      )}
     </div>
   );
-};
+}
 
 export default memo(MessageItem);

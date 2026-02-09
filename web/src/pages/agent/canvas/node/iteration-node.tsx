@@ -7,9 +7,7 @@ import { NodeProps, NodeResizeControl, Position } from '@xyflow/react';
 import { memo } from 'react';
 import { NodeHandleId, Operator } from '../../constant';
 import OperatorIcon from '../../operator-icon';
-import { CommonHandle } from './handle';
-import { RightHandleStyle } from './handle-icon';
-import styles from './index.less';
+import { CommonHandle, LeftEndHandle } from './handle';
 import NodeHeader from './node-header';
 import { NodeWrapper } from './node-wrapper';
 import { ResizeIcon, controlStyle } from './resize-icon';
@@ -21,45 +19,35 @@ export function InnerIterationNode({
   isConnectable = true,
   selected,
 }: NodeProps<IIterationNode>) {
-  // const { theme } = useTheme();
-
   return (
-    <ToolBar selected={selected} id={id} label={data.label}>
+    <ToolBar selected={selected} id={id} label={data.label} showRun={false}>
       <section
-        className={cn('h-full bg-transparent rounded-b-md ', {
-          [styles.selectedHeader]: selected,
-        })}
+        className={cn(
+          'h-full bg-transparent rounded-b-md group border border-border-button border-t-0',
+          {
+            ['border-x border-accent-primary']: selected,
+          },
+        )}
       >
         <NodeResizeControl style={controlStyle} minWidth={100} minHeight={50}>
           <ResizeIcon />
         </NodeResizeControl>
-        <CommonHandle
-          id={NodeHandleId.End}
-          type="target"
-          position={Position.Left}
-          isConnectable={isConnectable}
-          className={styles.handle}
-          nodeId={id}
-        ></CommonHandle>
+        <LeftEndHandle></LeftEndHandle>
         <CommonHandle
           id={NodeHandleId.Start}
           type="source"
           position={Position.Right}
           isConnectable={isConnectable}
-          className={styles.handle}
           nodeId={id}
         ></CommonHandle>
-
         <NodeHeader
           id={id}
           name={data.name}
           label={data.label}
           wrapperClassName={cn(
-            'bg-background-header-bar p-2 rounded-t-[10px] absolute w-full top-[-44px] left-[-0.3px]',
-            // styles.iterationHe ader,
+            'bg-background-header-bar p-2 rounded-t-[10px] absolute w-full top-[-38px] left-[-0.3px] border-x border-t border-border-button',
             {
-              // [`${styles.dark} text-white`]: theme === 'dark',
-              [styles.selectedHeader]: selected,
+              ['border-x border-t border-accent-primary']: selected,
             },
           )}
         ></NodeHeader>
@@ -68,18 +56,17 @@ export function InnerIterationNode({
   );
 }
 
-function InnerIterationStartNode({
+export function InnerIterationStartNode({
   isConnectable = true,
   id,
+  selected,
 }: NodeProps<IIterationStartNode>) {
   return (
-    <NodeWrapper className="w-20">
+    <NodeWrapper className="w-20" selected={selected}>
       <CommonHandle
         type="source"
         position={Position.Right}
         isConnectable={isConnectable}
-        className={styles.handle}
-        style={RightHandleStyle}
         isConnectableEnd={false}
         id={NodeHandleId.Start}
         nodeId={id}

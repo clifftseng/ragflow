@@ -7,7 +7,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { useFetchKnowledgeList } from '@/hooks/knowledge-hooks';
+import { useFetchKmKnowledgeBaseConfiguration } from './hooks';
 import { UserOutlined } from '@ant-design/icons';
 import { Avatar, Flex, Form, InputNumber, Select, Slider, Space } from 'antd';
 import DOMPurify from 'dompurify';
@@ -18,20 +18,22 @@ export const TagSetItem = () => {
   const { t } = useTranslation();
   const form = useFormContext();
 
-  const { list: knowledgeList } = useFetchKnowledgeList(true);
+  const { data: knowledgeDetail } = useFetchKmKnowledgeBaseConfiguration();
 
-  const knowledgeOptions = knowledgeList
-    .filter((x) => x.parser_id === 'tag')
-    .map((x) => ({
-      label: x.name,
-      value: x.id,
-      icon: () => (
-        <Space>
-          <Avatar size={20} icon={<UserOutlined />} src={x.avatar} />
-          {x.name}
-        </Space>
-      ),
-    }));
+  const knowledgeOptions = knowledgeDetail?.id
+    ? [
+        {
+          label: knowledgeDetail.name,
+          value: knowledgeDetail.id,
+          icon: () => (
+            <Space>
+              <Avatar size={20} icon={<UserOutlined />} src={knowledgeDetail.avatar} />
+              {knowledgeDetail.name}
+            </Space>
+          ),
+        },
+      ]
+    : [];
 
   return (
     <FormField

@@ -20,8 +20,6 @@ import { KmEmailConfiguration } from './configuration/km-email';
 import { KmPictureConfiguration } from './configuration/km-picture';
 import { KmTagConfiguration } from './configuration/km-tag';
 import { KmKnowledgeGraphConfiguration } from './configuration/km-knowledge-graph';
-import RaptorFormFields, { showRaptorParseConfiguration } from '@/components/parse-configuration/raptor-form-fields';
-import GraphRagItems, { showGraphRagItems } from '@/components/parse-configuration/graph-rag-form-fields';
 
 const KmConfigurationComponentMap = {
   [DocumentParserType.Naive]: KmNaiveConfiguration,
@@ -62,16 +60,7 @@ export function KmChunkMethodForm({ parserList }: IKmChunkMethodFormProps) {
       <div className="p-4 border rounded-lg">
         <ConfigurationComponent />
       </div>
-      {showRaptorParseConfiguration(finalParserId) && (
-        <div className="mt-4 p-4 border-t">
-          <RaptorFormFields />
-        </div>
-      )}
-      {showGraphRagItems(finalParserId) && (
-        <div className="mt-4 p-4 border-t">
-          <GraphRagItems marginBottom={false} className="p-0" />
-        </div>
-      )}
+      {/* KM 公開頁面避免觸發需登入的模型設定元件 */}
     </div>
   );
 }

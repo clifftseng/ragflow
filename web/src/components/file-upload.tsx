@@ -1,3 +1,5 @@
+// https://www.diceui.com/docs/components/file-upload
+
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -1026,7 +1028,7 @@ function getFileIcon(file: File) {
 
   if (
     type.startsWith('text/') ||
-    ['txt', 'md', 'rtf', 'pdf'].includes(extension)
+    ['txt', 'md', 'mdx', 'rtf', 'pdf'].includes(extension)
   ) {
     return <FileTextIcon />;
   }

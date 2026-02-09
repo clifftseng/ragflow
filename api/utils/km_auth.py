@@ -2,11 +2,11 @@ import os
 import json
 import base64
 import logging
-import binascii # 導入 binascii 以捕捉 Base64 解碼錯誤
+import binascii  # 導入 binascii 以捕捉 Base64 解碼錯誤
 import cryptography
 import ast
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding # 只導入 padding
+from cryptography.hazmat.primitives.asymmetric import padding  # 只導入 padding
 from cryptography.hazmat.primitives import hashes
 # InvalidPadding 已棄用，我們捕捉更通用的異常
 from cryptography.exceptions import InvalidSignature
@@ -14,7 +14,9 @@ from cryptography.exceptions import InvalidSignature
 logging.info(f"Cryptography library version: {cryptography.__version__}")
 
 PRIVATE_KEY_PATH = "/ragflow/conf/private_key.pem"
+PUBLIC_KEY_PATH = "/ragflow/conf/public_key.pem"
 _private_key = None
+_public_key = None
 
 def load_private_key():
     """
@@ -32,6 +34,51 @@ def load_private_key():
                 password=None
             )
     return _private_key
+
+
+def load_public_key():
+    """
+    延遲載入 RSA 公鑰，確保只在需要時載入一次。
+    """
+    global _public_key
+    if _public_key is None:
+        if not PUBLIC_KEY_PATH or not os.path.exists(PUBLIC_KEY_PATH):
+            logging.error(f"RSA public key file not found at path: {PUBLIC_KEY_PATH}")
+            raise FileNotFoundError("RSA public key is not configured or not found.")
+
+        with open(PUBLIC_KEY_PATH, "rb") as key_file:
+            _public_key = serialization.load_pem_public_key(key_file.read())
+    return _public_key
+
+
+def encrypt_token(payload: dict) -> str:
+    """
+    使用 RSA 公鑰對 payload 進行分段加密，並使用 PKCS1v1.5 填充。
+    回傳標準 Base64 字串（非 urlsafe）。
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Payload must be a dict.")
+
+    public_key = load_public_key()
+    payload_text = repr(payload).encode("utf-8")
+
+    # PKCS1v1.5 填充可用的最大明文長度
+    key_bytes = public_key.key_size // 8
+    max_chunk_len = key_bytes - 11
+
+    encrypted_chunks = []
+    offset = 0
+    while offset < len(payload_text):
+        chunk = payload_text[offset : offset + max_chunk_len]
+        encrypted_chunk = public_key.encrypt(
+            chunk,
+            padding.PKCS1v15(),
+        )
+        encrypted_chunks.append(encrypted_chunk)
+        offset += max_chunk_len
+
+    encrypted_bytes = b"".join(encrypted_chunks)
+    return base64.b64encode(encrypted_bytes).decode("utf-8")
 
 def decrypt_token(encrypted_b64: str) -> dict:
     """

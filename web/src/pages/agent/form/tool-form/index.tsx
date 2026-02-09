@@ -1,13 +1,18 @@
+import { memo } from 'react';
 import useGraphStore from '../../store';
 import { ToolFormConfigMap } from './constant';
+import MCPForm from './mcp-form';
 
 const EmptyContent = () => <div></div>;
 
-const ToolForm = () => {
+function ToolForm() {
   const clickedToolId = useGraphStore((state) => state.clickedToolId);
+  const { getAgentToolById } = useGraphStore();
+  const tool = getAgentToolById(clickedToolId);
 
   const ToolForm =
-    ToolFormConfigMap[clickedToolId as keyof typeof ToolFormConfigMap] ??
+    ToolFormConfigMap[tool?.component_name as keyof typeof ToolFormConfigMap] ??
+    MCPForm ??
     EmptyContent;
 
   return (
@@ -15,6 +20,6 @@ const ToolForm = () => {
       <ToolForm key={clickedToolId}></ToolForm>
     </section>
   );
-};
+}
 
-export default ToolForm;
+export default memo(ToolForm);
