@@ -27,6 +27,7 @@ from common.misc_utils import get_uuid
 from common.constants import StatusEnum
 from api.constants import DATASET_NAME_LIMIT
 from api.utils.api_utils import get_parser_config, get_data_error_result
+from api.db.db_models import Tenant
 
 
 class KnowledgebaseService(CommonService):
@@ -130,6 +131,29 @@ class KnowledgebaseService(CommonService):
         doc_ids = list(doc_ids.dicts())
         doc_ids = [doc["document_id"] for doc in doc_ids]
         return doc_ids
+
+    @classmethod
+    @DB.connection_context()
+    def get_public_detail(cls, kb_id):
+        """
+        Get public knowledgebase detail by kb_id without user authentication.
+        Includes tenant parser_ids for UI parser selection.
+        """
+        try:
+            query = (
+                cls.model.select(cls.model, Tenant.parser_ids)
+                .join(Tenant, on=(cls.model.tenant_id == Tenant.id))
+                .where(
+                    (cls.model.id == kb_id),
+                    (cls.model.status == StatusEnum.VALID.value),
+                )
+            )
+            results = list(query.dicts())
+            if not results:
+                return None
+            return results[0]
+        except Exception:
+            return None
 
     @classmethod
     @DB.connection_context()
@@ -397,7 +421,7 @@ class KnowledgebaseService(CommonService):
         if dataset_name == "":
             return False, get_data_error_result(message="Dataset name can't be empty.")
         if len(dataset_name.encode("utf-8")) > DATASET_NAME_LIMIT:
-            return False, get_data_error_result(message=f"Dataset name length is {len(dataset_name)} which is larger than {DATASET_NAME_LIMIT}")
+            return False, get_data_error_result(message=f"Dataset name length is {len(dataset_name)} which is large than {DATASET_NAME_LIMIT}")
 
         # Deduplicate name within tenant
         dataset_name = duplicate_name(

@@ -3,6 +3,7 @@ services:
     profiles:
       - elasticsearch
     image: elasticsearch:${STACK_VERSION}
+    hostname: es01
     volumes:
       - esdata01:/usr/share/elasticsearch/data
     ports:

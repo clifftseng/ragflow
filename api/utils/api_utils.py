@@ -24,6 +24,7 @@ import time
 from copy import deepcopy
 from functools import wraps
 from typing import Any
+from urllib.parse import unquote
 
 import requests
 from quart import (
@@ -37,6 +38,7 @@ from peewee import OperationalError
 from common.constants import ActiveEnum
 from api.db.db_models import APIToken
 from api.utils.json_encode import CustomJSONEncoder
+from api.utils.km_auth import decrypt_token
 from common.mcp_tool_call_conn import MCPToolCallSession, close_multiple_mcp_toolcall_sessions
 from api.db.services.tenant_llm_service import LLMFactoriesService
 from common.connection_utils import timeout
@@ -44,6 +46,54 @@ from common.constants import RetCode
 from common import settings
 
 requests.models.complexjson.dumps = functools.partial(json.dumps, cls=CustomJSONEncoder)
+
+def verify_url_token(token: str) -> bool:
+    """
+    Verifies a URL token by decrypting it and checking its expiration.
+    Returns True if valid, False otherwise.
+    """
+
+    try:
+        received_base64 = unquote(token)
+        payload = decrypt_token(received_base64)
+
+        if not isinstance(payload, dict) or 'id' not in payload or 'issuetime' not in payload:
+            raise ValueError('Invalid payload format.')
+
+        if not isinstance(payload.get('issuetime'), int):
+            raise ValueError('"issuetime" must be an integer timestamp.')
+
+        expire_timestamp = payload['issuetime']
+        current_timestamp = int(time.time())
+
+        if expire_timestamp <= current_timestamp:
+            logging.warning(f'Expired token received. Expiry: {expire_timestamp}, Current: {current_timestamp}')
+            return False
+
+        return True
+    except Exception as e:
+        logging.warning(f'URL token validation failed: {e}')
+        return False
+
+
+def require_km_token(func):
+    """
+    Decorator to protect /km/* routes.
+    Validates a token from URL arguments based on RSA decryption and timestamp.
+    """
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        token = request.args.get('token')
+
+        if not token:
+            return get_json_result(code=403, message='Access Forbidden:Missing token.')
+
+        if not verify_url_token(token):
+            return get_json_result(code=403, message='Access Forbidden: Invalid or missing token.')
+
+        return func(*args, **kwargs)
+    return decorated_function
+
 
 
 async def _coerce_request_data() -> dict:
@@ -74,9 +124,10 @@ async def _coerce_request_data() -> dict:
         return payload or {}
 
     if isinstance(payload, str):
-        raise AttributeError("'str' object has no attribute 'get'")
+        # Treat raw string payload as empty dict for validation purposes.
+        return {}
 
-    raise TypeError(f"Unsupported request payload type: {type(payload)!r}")
+    return {}
 
 async def get_request_json():
     return await _coerce_request_data()
@@ -142,6 +193,8 @@ def server_error_response(e):
 
 def validate_request(*args, **kwargs):
     def process_args(input_arguments):
+        if not isinstance(input_arguments, dict):
+            input_arguments = {}
         no_arguments = []
         error_arguments = []
         for arg in args:
